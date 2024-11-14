@@ -111,6 +111,9 @@ const clusterColumns = [
 ];
 
 function getLogsUiLink(clusterUuid, nodeId, indexUuid) {
+  console.log('indexUuid12321', JSON.stringify(indexUuid, null, 2));
+  console.log('nodeId213123', JSON.stringify(nodeId, null, 2));
+  console.log('clusterUuid123', JSON.stringify(clusterUuid, null, 2));
   const params = [];
   if (clusterUuid) {
     params.push(`elasticsearch.cluster.uuid:${clusterUuid}`);
@@ -132,6 +135,7 @@ function getLogsUiLink(clusterUuid, nodeId, indexUuid) {
 
 export class Logs extends PureComponent {
   renderLogs() {
+    console.log('renderLogs');
     const {
       logs: { enabled, logs },
       nodeId,
@@ -147,10 +151,11 @@ export class Logs extends PureComponent {
   }
 
   renderNoLogs() {
+    console.log('renderNoLogs');
     const {
       logs: { enabled, reason },
     } = this.props;
-    if (enabled) {
+    if (!enabled) {
       return null;
     }
 
@@ -158,6 +163,7 @@ export class Logs extends PureComponent {
   }
 
   renderCallout() {
+    console.log('renderCallout');
     const { capabilities: uiCapabilities, infra, kibanaServices } = Legacy.shims;
     const show = uiCapabilities.logs && uiCapabilities.logs.show;
     const {
@@ -166,9 +172,10 @@ export class Logs extends PureComponent {
       clusterUuid,
       indexUuid,
     } = this.props;
-    if (!enabled || !show) {
-      return null;
-    }
+    console.log('this.props', JSON.stringify(this.props, null, 2));
+    // if (enabled || show) {
+    //   return null;
+    // }
 
     return infra ? (
       <EuiCallOut
@@ -198,11 +205,13 @@ export class Logs extends PureComponent {
   }
 
   render() {
+    console.log('render');
     const {
       nodeId,
       indexUuid,
       logs: { limit },
     } = this.props;
+    console.log('this.props', JSON.stringify(this.props, null, 2));
 
     let description;
 

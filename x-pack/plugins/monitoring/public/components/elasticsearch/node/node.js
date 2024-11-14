@@ -24,6 +24,7 @@ import { AlertsCallout } from '../../../alerts/callout';
 import { ShardAllocation } from '../shard_allocation';
 
 export const Node = ({ nodeSummary, metrics, logs, alerts, nodeId, clusterUuid, ...props }) => {
+  console.log('logs', JSON.stringify(logs, null, 2));
   /*
   // This isn't doing anything due to a possible bug.  https://github.com/elastic/kibana/issues/106309
   if (alerts) {
