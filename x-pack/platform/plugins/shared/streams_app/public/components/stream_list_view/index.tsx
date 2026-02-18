@@ -96,7 +96,7 @@ export function StreamListView() {
       const status = await getWiredStatus();
       setWiredStreamsStatus(status);
     } catch (error) {
-      core.notifications.toasts.addError(error, {
+      core.notifications.toasts.addError(getFormattedError(error), {
         title: i18n.translate('xpack.streams.streamsListView.fetchWiredStatusErrorToastTitle', {
           defaultMessage: 'Error fetching wired streams status',
         }),

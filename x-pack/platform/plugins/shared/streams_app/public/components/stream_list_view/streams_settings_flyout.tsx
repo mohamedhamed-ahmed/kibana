@@ -134,7 +134,7 @@ export function StreamsSettingsFlyout({
       setShowDisableModal(false);
       setDisableConfirmChecked(false);
     } catch (error) {
-      core.notifications.toasts.addError(error, {
+      core.notifications.toasts.addError(getFormattedError(error), {
         title: i18n.translate('xpack.streams.streamsListView.disableWiredStreamsErrorToastTitle', {
           defaultMessage: 'Error updating wired streams setting',
         }),
