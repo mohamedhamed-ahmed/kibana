@@ -205,7 +205,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       });
 
       it('Works when time_series_dimension is present on non-TSDB mappings (no runtime_mappings fallback)', async () => {
-        const dataStreamName = 'logs';
+        const dataStreamName = 'logs.otel';
         const componentTemplateName = 'streams_tsdim_non_tsdb_test';
         const shadowedField = 'attributes.tsdim_runtime_shadow';
         // Streams index templates use a max-long priority; keep it as a string to avoid JS precision loss.
