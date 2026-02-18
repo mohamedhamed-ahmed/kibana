@@ -349,7 +349,8 @@ describe('generateLayer', () => {
         };
 
         const result = generateLayer(streamName, rootDefinition, false);
-        const settings = result.template.settings as Record<string, any>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const settings = result.template.settings as any;
 
         // OTel streams use logsdb mode with OTel sort fields
         expect(settings.index.mode).toBe('logsdb');
@@ -364,7 +365,8 @@ describe('generateLayer', () => {
       };
 
       const result = generateLayer('logs.ecs', rootDefinition, false);
-      const settings = result.template.settings as Record<string, any>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const settings = result.template.settings as any;
 
       expect(settings.index.mode).toBe('logsdb');
       expect(settings.index.sort.field).toEqual(['host.name', '@timestamp']);
@@ -385,6 +387,7 @@ describe('generateLayer', () => {
         // Child streams of OTel roots inherit OTel alias behavior
         const hasOtelAliases =
           Object.values(properties).some(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (prop: any) => prop?.type === 'alias' && prop?.path?.includes('attributes.')
           ) || properties.attributes;
 
@@ -403,6 +406,7 @@ describe('generateLayer', () => {
 
       // Child streams of logs.ecs should NOT have OTel-to-ECS aliases
       const hasOtelAliases = Object.values(properties).some(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prop: any) => prop?.type === 'alias' && prop?.path?.includes('attributes.')
       );
 
