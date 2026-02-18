@@ -801,7 +801,7 @@ export class StreamsClient {
       );
     } catch (e) {
       // if permissions are insufficient, we just return an empty list
-      if (e.statusCode === 403) {
+      if (e instanceof Error && 'statusCode' in e && e.statusCode === 403) {
         return [];
       }
       throw e;
@@ -897,7 +897,9 @@ export class StreamsClient {
       } catch (error) {
         // Log but don't fail - stream might not exist in ES or already be disabled
         this.dependencies.logger.warn(
-          `Failed to disable stream ${name} in Elasticsearch after deletion: ${error.message}`
+          `Failed to disable stream ${name} in Elasticsearch after deletion: ${
+            error instanceof Error ? error.message : String(error)
+          }`
         );
       }
     }

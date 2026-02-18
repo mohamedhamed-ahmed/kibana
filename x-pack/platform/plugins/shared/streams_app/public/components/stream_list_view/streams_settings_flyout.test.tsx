@@ -81,8 +81,10 @@ describe('StreamsSettingsFlyout', () => {
     mockUseStreamsPrivileges.mockReturnValue({
       ui: { manage: true },
       features: {},
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockUseKibana.mockReturnValue(defaultKibanaMock as any);
 
     // Default mock implementations
@@ -464,6 +466,7 @@ describe('StreamsSettingsFlyout', () => {
       mockUseStreamsPrivileges.mockReturnValue({
         ui: { manage: false },
         features: {},
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const streamsStatus = {

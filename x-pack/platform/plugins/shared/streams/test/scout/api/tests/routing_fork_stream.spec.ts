@@ -20,6 +20,9 @@ apiTest.describe(
     const rootStream = 'logs.otel';
     const streamNamePrefix = `${rootStream}.rt`;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type StreamWhere = any;
+
     apiTest.afterEach(async ({ apiServices }) => {
       // Cleanup test streams - matches any stream starting with 'logs.otel.rt'
       await apiServices.streamsTest.cleanupTestStreams(streamNamePrefix);
@@ -652,7 +655,7 @@ apiTest.describe(
 
       // Find and update the routing rule
       const updatedRouting = parentBody.stream.ingest.wired.routing.map(
-        (rule: { destination: string; where: any; status: string }) => {
+        (rule: { destination: string; where: StreamWhere; status: string }) => {
           if (rule.destination === childStreamName) {
             return {
               ...rule,
@@ -721,7 +724,7 @@ apiTest.describe(
 
         // Update status to disabled
         const updatedRouting = parentBody.stream.ingest.wired.routing.map(
-          (rule: { destination: string; where: any; status: string }) => {
+          (rule: { destination: string; where: StreamWhere; status: string }) => {
             if (rule.destination === childStreamName) {
               return { ...rule, status: 'disabled' };
             }
@@ -880,7 +883,7 @@ apiTest.describe(
 
         // Update to complex AND condition
         const updatedRouting = parentBody.stream.ingest.wired.routing.map(
-          (rule: { destination: string; where: any; status: string }) => {
+          (rule: { destination: string; where: StreamWhere; status: string }) => {
             if (rule.destination === childStreamName) {
               return {
                 ...rule,
