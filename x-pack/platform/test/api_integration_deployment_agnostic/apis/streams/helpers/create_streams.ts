@@ -29,18 +29,23 @@ const streams: StreamPutItem[] = [
             },
             'scope.name': {
               type: 'keyword',
+              ignore_above: 1024,
             },
             trace_id: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             span_id: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             event_name: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             severity_text: {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'body.text': {
               type: 'match_only_text',
@@ -50,9 +55,11 @@ const streams: StreamPutItem[] = [
             },
             'resource.attributes.host.name': {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'resource.attributes.service.name': {
               type: 'keyword',
+              ignore_above: 1024,
             },
             'stream.name': {
               type: 'system',
