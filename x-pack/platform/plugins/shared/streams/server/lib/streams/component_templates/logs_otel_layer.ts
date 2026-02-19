@@ -11,6 +11,7 @@
  * This should be migrated to using the unified fields metadata plugin instead.
  * See https://github.com/elastic/kibana/tree/main/x-pack/platform/plugins/shared/fields_metadata for more details.
  */
+
 // eslint-disable-next-line no-restricted-imports
 import { EcsFlat } from '@elastic/ecs';
 import type {
@@ -67,18 +68,23 @@ export const otelBaseFields: FieldDefinition = {
   },
   'scope.name': {
     type: 'keyword',
+    ignore_above: 1024,
   },
   trace_id: {
     type: 'keyword',
+    ignore_above: 1024,
   },
   span_id: {
     type: 'keyword',
+    ignore_above: 1024,
   },
   event_name: {
     type: 'keyword',
+    ignore_above: 1024,
   },
   severity_text: {
     type: 'keyword',
+    ignore_above: 1024,
   },
   'body.text': {
     type: 'match_only_text',
@@ -88,9 +94,11 @@ export const otelBaseFields: FieldDefinition = {
   },
   'resource.attributes.host.name': {
     type: 'keyword',
+    ignore_above: 1024,
   },
   'resource.attributes.service.name': {
     type: 'keyword',
+    ignore_above: 1024,
   },
 };
 
