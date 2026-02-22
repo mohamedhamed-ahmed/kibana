@@ -11,11 +11,7 @@ import type { StreamsPluginSetup, StreamsPluginStart, WiredStreamsStatus } from 
 
 export type { StreamsPluginSetup, StreamsPluginStart, WiredStreamsStatus };
 
-export {
-  STREAMS_API_PRIVILEGES,
-  STREAMS_UI_PRIVILEGES,
-  MAX_STREAM_NAME_LENGTH,
-} from '../common/constants';
+export { STREAMS_API_PRIVILEGES, STREAMS_UI_PRIVILEGES } from '../common/constants';
 
 export {
   excludeFrozenQuery,
