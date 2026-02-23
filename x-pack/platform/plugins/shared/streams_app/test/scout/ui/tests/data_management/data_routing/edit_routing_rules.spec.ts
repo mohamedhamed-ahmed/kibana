@@ -62,7 +62,7 @@ test.describe(
       page,
       pageObjects,
     }) => {
-      const rountingRuleName = 'logs.edit-test';
+      const rountingRuleName = 'logs.otel.edit-test';
       await pageObjects.streams.clickEditRoutingRule(rountingRuleName);
 
       await pageObjects.streams.toggleConditionEditorWithSyntaxSwitch();
@@ -125,14 +125,14 @@ test.describe(
       );
 
       // Verify rule still exists
-      await pageObjects.streams.expectRoutingRuleVisible('logs.edit-test');
+      await pageObjects.streams.expectRoutingRuleVisible('logs.otel.edit-test');
     });
 
     test('should disable Update button when syntax editor has empty condition', async ({
       page,
       pageObjects,
     }) => {
-      const routingRuleName = 'logs.edit-test';
+      const routingRuleName = 'logs.otel.edit-test';
       await pageObjects.streams.clickEditRoutingRule(routingRuleName);
 
       // Switch to syntax editor
@@ -154,7 +154,7 @@ test.describe(
       page,
       pageObjects,
     }) => {
-      const routingRuleName = 'logs.edit-test';
+      const routingRuleName = 'logs.otel.edit-test';
       await pageObjects.streams.clickEditRoutingRule(routingRuleName);
 
       // Switch to syntax editor
@@ -176,7 +176,7 @@ test.describe(
       page,
       pageObjects,
     }) => {
-      const routingRuleName = 'logs.edit-test';
+      const routingRuleName = 'logs.otel.edit-test';
       await pageObjects.streams.clickEditRoutingRule(routingRuleName);
 
       // Without making any changes, verify Update button is disabled

@@ -1088,7 +1088,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         it('fails to fork a wired stream with special characters in the destination name', async () => {
           const body = {
             stream: {
-              name: 'logs.with*special',
+              name: 'logs.otel.with*special',
             },
             where: {
               field: 'log.logger',
@@ -1096,7 +1096,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
             },
             status,
           };
-          const response = await forkStream(apiClient, 'logs', body, 400);
+          const response = await forkStream(apiClient, 'logs.otel', body, 400);
           expect((response as unknown as { message: string }).message).to.contain(
             'Stream name cannot contain "*".'
           );
