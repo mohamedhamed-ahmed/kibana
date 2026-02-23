@@ -76,7 +76,7 @@ run(
     });
 
     const configPath = flags.config ? String(flags.config) : undefined;
-    const logsIndex = flags['logs-index'] ? String(flags['logs-index']) : 'logs';
+    const logsIndex = flags['logs-index'] ? String(flags['logs-index']) : 'logs.otel';
     const version = flags.version ? String(flags.version) : undefined;
     const teardown = Boolean(flags.teardown);
     const patch = Boolean(flags.patch);
