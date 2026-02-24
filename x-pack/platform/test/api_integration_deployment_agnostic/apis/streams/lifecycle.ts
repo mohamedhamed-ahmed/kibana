@@ -912,7 +912,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
       });
 
       describe('ilm policies endpoint', () => {
-        const streamName = 'logs.ilm-policy-usage';
+        const streamName = 'logs.otel.ilm-policy-usage';
         const policyName = `streams_ilm_policy_usage_${Date.now()}`;
 
         before(async () => {

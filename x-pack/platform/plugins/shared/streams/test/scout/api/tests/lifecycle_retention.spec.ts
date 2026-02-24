@@ -99,7 +99,7 @@ apiTest.describe(
     }
 
     apiTest.afterEach(async ({ apiServices }) => {
-      // Cleanup test streams - matches any stream starting with 'logs.lc'
+      // Cleanup test streams - matches any stream starting with 'logs.otel.lc'
       await apiServices.streamsTest.cleanupTestStreams(streamNamePrefix);
     });
 

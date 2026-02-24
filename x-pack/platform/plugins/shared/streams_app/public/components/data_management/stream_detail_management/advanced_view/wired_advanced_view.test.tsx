@@ -377,7 +377,7 @@ describe('WiredAdvancedView', () => {
 
       renderWithProviders(
         <WiredAdvancedView
-          definition={createMockDefinition('logs.child')}
+          definition={createMockDefinition('logs.otel.child')}
           refreshDefinition={mockRefreshDefinition}
         />
       );
@@ -455,7 +455,7 @@ describe('WiredAdvancedView', () => {
 
       renderWithProviders(
         <WiredAdvancedView
-          definition={createMockDefinition('logs.child')}
+          definition={createMockDefinition('logs.otel.child')}
           refreshDefinition={mockRefreshDefinition}
         />
       );
