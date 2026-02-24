@@ -104,7 +104,7 @@ export default function ({ getService }: DeploymentAgnosticFtrProviderContext) {
         });
 
         it('includes create_snapshot_repository in stream privileges', async () => {
-          const stream = await getStream(apiClient, 'logs');
+          const stream = await getStream(apiClient, 'logs.otel');
           const parsed = Streams.WiredStream.GetResponse.parse(stream);
           expect(typeof parsed.privileges.create_snapshot_repository).to.eql('boolean');
         });
