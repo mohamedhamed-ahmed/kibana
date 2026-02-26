@@ -172,29 +172,27 @@ export const FieldNameSelector = () => {
             { defaultMessage: 'A field with this name already exists.' }
           );
         }
-        if (isWiredStream) {
-          const isEcsStream = getRoot(stream.name) === LOGS_ECS_STREAM_NAME;
-          if (!isEcsStream) {
-            if (!isNamespacedEcsField(name)) {
-              return i18n.translate(
-                'xpack.streams.schemaEditor.addFieldFlyout.fieldNameNotNamespacedError',
-                {
-                  defaultMessage:
-                    "Field {fieldName} is not allowed to be defined as it doesn't match the namespaced ECS or OTel schema.",
-                  values: { fieldName: name },
-                }
-              );
-            }
-            if (isOtelReservedField(name)) {
-              return i18n.translate(
-                'xpack.streams.schemaEditor.addFieldFlyout.fieldNameOtelReservedError',
-                {
-                  defaultMessage:
-                    'Field {fieldName} is an automatic alias of another field because of OTel compatibility mode.',
-                  values: { fieldName: name },
-                }
-              );
-            }
+        const isEcsStream = getRoot(stream.name) === LOGS_ECS_STREAM_NAME;
+        if (isWiredStream && !isEcsStream) {
+          if (!isNamespacedEcsField(name)) {
+            return i18n.translate(
+              'xpack.streams.schemaEditor.addFieldFlyout.fieldNameNotNamespacedError',
+              {
+                defaultMessage:
+                  "Field {fieldName} is not allowed to be defined as it doesn't match the namespaced ECS or OTel schema.",
+                values: { fieldName: name },
+              }
+            );
+          }
+          if (isOtelReservedField(name)) {
+            return i18n.translate(
+              'xpack.streams.schemaEditor.addFieldFlyout.fieldNameOtelReservedError',
+              {
+                defaultMessage:
+                  'Field {fieldName} is an automatic alias of another field because of OTel compatibility mode.',
+                values: { fieldName: name },
+              }
+            );
           }
         }
         return true;
