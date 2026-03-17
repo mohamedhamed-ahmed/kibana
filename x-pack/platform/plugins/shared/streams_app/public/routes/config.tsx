@@ -107,7 +107,7 @@ const streamsAppRoutes = {
         children: {
           '/{key}': {
             element: (
-              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'retention' } }} />
+              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'overview' } }} />
             ),
           },
           /**
@@ -115,7 +115,7 @@ const streamsAppRoutes = {
            */
           '/{key}/{tab}': {
             element: (
-              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'retention' } }} />
+              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'overview' } }} />
             ),
             params: t.intersection([
               t.type({
@@ -148,7 +148,7 @@ const streamsAppRoutes = {
            */
           '/*': {
             element: (
-              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'retention' } }} />
+              <RedirectTo path="/{key}/management/{tab}" params={{ path: { tab: 'overview' } }} />
             ),
           },
         },

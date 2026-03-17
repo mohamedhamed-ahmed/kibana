@@ -17,6 +17,7 @@ import { MissingDataStreamCallout } from './missing_data_stream_callout';
 import { StreamDetailLifecycle } from '../stream_detail_lifecycle';
 import { StreamsAppPageTemplate } from '../../streams_app_page_template';
 import { ClassicStreamBadge, LifecycleBadge } from '../../stream_badges';
+import { StreamOverview } from '../../stream_detail_overview';
 import { useStreamsDetailManagementTabs } from './use_streams_detail_management_tabs';
 import { StreamDetailDataQuality } from '../../stream_data_quality';
 import { StreamDetailSchemaEditor } from '../stream_detail_schema_editor';
@@ -24,6 +25,7 @@ import { StreamDetailAttachments } from '../../stream_detail_attachments';
 import { ClassicAdvancedView } from './advanced_view/classic_advanced_view';
 
 const classicStreamManagementSubTabs = [
+  'overview',
   'processing',
   'advanced',
   'dataQuality',
@@ -94,6 +96,13 @@ export function ClassicStreamDetailManagement({
   }
 
   const tabs: ManagementTabs = {};
+
+  tabs.overview = {
+    content: <StreamOverview />,
+    label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
+      defaultMessage: 'Overview',
+    }),
+  };
 
   if (definition.data_stream_exists) {
     tabs.retention = {
@@ -200,5 +209,5 @@ export function ClassicStreamDetailManagement({
     return null;
   }
 
-  return <Wrapper tabs={tabs} streamId={key} tab={tab} />;
+  return <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'overview' } }} />;
 }

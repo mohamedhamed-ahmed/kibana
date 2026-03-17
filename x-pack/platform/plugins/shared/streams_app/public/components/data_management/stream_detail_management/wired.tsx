@@ -14,6 +14,7 @@ import { RedirectTo } from '../../redirect_to';
 import { StreamDetailRouting } from '../stream_detail_routing';
 import { StreamDetailSchemaEditor } from '../stream_detail_schema_editor';
 import { StreamDetailLifecycle } from '../stream_detail_lifecycle';
+import { StreamOverview } from '../../stream_detail_overview';
 import { Wrapper } from './wrapper';
 import { MissingDataStreamCallout } from './missing_data_stream_callout';
 import { useStreamsDetailManagementTabs } from './use_streams_detail_management_tabs';
@@ -24,6 +25,7 @@ import { WiredStreamBadge } from '../../stream_badges';
 import { StreamDetailAttachments } from '../../stream_detail_attachments';
 
 const wiredStreamManagementSubTabs = [
+  'overview',
   'partitioning',
   'processing',
   'schema',
@@ -130,6 +132,12 @@ export function WiredStreamDetailManagement({
   }
 
   const tabs = {
+    overview: {
+      content: <StreamOverview />,
+      label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
+        defaultMessage: 'Overview',
+      }),
+    },
     retention: {
       content: (
         <StreamDetailLifecycle definition={definition} refreshDefinition={refreshDefinition} />
@@ -228,7 +236,5 @@ export function WiredStreamDetailManagement({
     return null;
   }
 
-  return (
-    <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'partitioning' } }} />
-  );
+  return <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'overview' } }} />;
 }

@@ -14,6 +14,8 @@ import { useKibana } from './use_kibana';
 import { useTimefilter } from './use_timefilter';
 import { executeEsqlQuery } from './use_execute_esql_query';
 
+const HISTOGRAM_BREAKDOWN_LIMIT = 10_000;
+
 export interface StreamDocCountsFetch {
   docCount: Promise<StreamDocsStat[]>;
   failedDocCount: Promise<StreamDocsStat[]>;
@@ -32,7 +34,7 @@ export function useStreamDocCountsFetch({
   numDataPoints,
 }: UseDocCountFetchProps): {
   getStreamDocCounts(streamName?: string): StreamDocCountsFetch;
-  getStreamHistogram(streamName: string): Promise<UnparsedEsqlResponse>;
+  getStreamHistogram(streamName: string, breakdownField?: string): Promise<UnparsedEsqlResponse>;
 } {
   const { timeState, timeState$ } = useTimefilter();
   const {
@@ -148,8 +150,9 @@ export function useStreamDocCountsFetch({
 
       return docCountsFetch;
     },
-    getStreamHistogram(streamName: string): Promise<UnparsedEsqlResponse> {
-      const cachedPromise = histogramPromiseCache.current[streamName];
+    getStreamHistogram(streamName: string, breakdownField?: string): Promise<UnparsedEsqlResponse> {
+      const cacheKey = `${streamName}::${breakdownField ?? ''}`;
+      const cachedPromise = histogramPromiseCache.current[cacheKey];
       if (cachedPromise) {
         return cachedPromise;
       }
@@ -160,12 +163,14 @@ export function useStreamDocCountsFetch({
       }
 
       const minInterval = Math.floor((timeState.end - timeState.start) / numDataPoints);
-
       const source = canReadFailureStore ? `${streamName},${streamName}::failures` : streamName;
-
       const timezone = uiSettings?.get<'Browser' | string>(UI_SETTINGS.DATEFORMAT_TZ);
+
+      const breakdownClause = breakdownField ? `, \`${breakdownField}\`` : '';
+      const limitClause = breakdownField ? ` | LIMIT ${HISTOGRAM_BREAKDOWN_LIMIT}` : '';
+
       const histogramPromise = executeEsqlQuery({
-        query: `FROM ${source} | STATS doc_count = COUNT(*) BY @timestamp = BUCKET(@timestamp, ${minInterval} ms)`,
+        query: `FROM ${source} | STATS doc_count = COUNT(*) BY @timestamp = BUCKET(@timestamp, ${minInterval} ms)${breakdownClause}${limitClause}`,
         search: data.search.search,
         timezone,
         signal: abortController.signal,
@@ -173,7 +178,7 @@ export function useStreamDocCountsFetch({
         end: timeState.end,
       }) as Promise<UnparsedEsqlResponse>;
 
-      histogramPromiseCache.current[streamName] = histogramPromise;
+      histogramPromiseCache.current[cacheKey] = histogramPromise;
 
       return histogramPromise;
     },

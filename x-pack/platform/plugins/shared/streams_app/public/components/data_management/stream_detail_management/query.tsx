@@ -20,6 +20,7 @@ import { RedirectTo } from '../../redirect_to';
 import { QueryStreamSchemaEditor } from '../../query_streams/query_stream_schema_editor';
 import { QueryStreamsAdvancedView } from '../../query_streams/query_streams_advanced_view';
 import { FeedbackButton } from '../../feedback_button';
+import { StreamOverview } from '../../stream_detail_overview';
 
 const queryStreamManagementSubTabs = [
   'overview',
@@ -63,7 +64,7 @@ export function QueryStreamDetailManagement({
   const tabs: ManagementTabs = {};
 
   tabs.overview = {
-    content: <div />, // TODO: Implement overview tab
+    content: <StreamOverview />,
     label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
       defaultMessage: 'Overview',
     }),
