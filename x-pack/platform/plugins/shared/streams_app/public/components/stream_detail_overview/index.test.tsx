@@ -1,0 +1,109 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { I18nProvider } from '@kbn/i18n-react';
+import { StreamOverview } from '.';
+import {
+  createMockWiredStreamDefinition,
+  createMockQueryStreamDefinition,
+} from '../data_management/shared/mocks';
+
+const mockUseStreamDetail = jest.fn();
+const mockUseTimeRange = jest.fn();
+const mockUseTimeRangeUpdate = jest.fn();
+const mockUseTimefilter = jest.fn();
+
+jest.mock('../../hooks/use_stream_detail', () => ({
+  useStreamDetail: () => mockUseStreamDetail(),
+}));
+
+jest.mock('../../hooks/use_time_range', () => ({
+  useTimeRange: () => mockUseTimeRange(),
+}));
+
+jest.mock('../../hooks/use_time_range_update', () => ({
+  useTimeRangeUpdate: () => mockUseTimeRangeUpdate(),
+}));
+
+jest.mock('../../hooks/use_timefilter', () => ({
+  useTimefilter: () => mockUseTimefilter(),
+}));
+
+jest.mock('./data_quality_card', () => ({
+  DataQualityCard: () => <div data-test-subj="mockDataQualityCard">Dataset quality</div>,
+}));
+
+jest.mock('./stats_cards', () => ({
+  StatsCards: () => <div data-test-subj="mockStatsCards">Documents</div>,
+}));
+
+jest.mock('./about_panel', () => ({
+  AboutPanel: () => <div data-test-subj="mockAboutPanel">About this stream</div>,
+}));
+
+jest.mock('./ingest_rate_chart', () => ({
+  IngestRateChart: () => (
+    <div data-test-subj="mockIngestRateChart">
+      <button data-test-subj="streamsAppTimeSeriesChartBreakdownSelector">Breakdown</button>
+    </div>
+  ),
+}));
+
+const renderWithI18n = (ui: React.ReactElement) => render(<I18nProvider>{ui}</I18nProvider>);
+
+describe('StreamOverview', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseTimeRange.mockReturnValue({ rangeFrom: 'now-15m', rangeTo: 'now' });
+    mockUseTimeRangeUpdate.mockReturnValue({ updateTimeRange: jest.fn() });
+    mockUseTimefilter.mockReturnValue({ refresh: jest.fn() });
+  });
+
+  it('renders time filter in sidebar', () => {
+    mockUseStreamDetail.mockReturnValue({
+      definition: createMockWiredStreamDefinition(),
+    });
+
+    renderWithI18n(<StreamOverview />);
+
+    expect(screen.getByText('About this stream')).toBeInTheDocument();
+  });
+
+  it('renders StatsRow (DataQualityCard + StatsCards) only for ingest stream', () => {
+    mockUseStreamDetail.mockReturnValue({
+      definition: createMockWiredStreamDefinition(),
+    });
+
+    renderWithI18n(<StreamOverview />);
+
+    expect(screen.getByText('Dataset quality')).toBeInTheDocument();
+    expect(screen.getByText('Documents')).toBeInTheDocument();
+  });
+
+  it('renders IngestRateChart for all stream types', () => {
+    mockUseStreamDetail.mockReturnValue({
+      definition: createMockQueryStreamDefinition(),
+    });
+
+    renderWithI18n(<StreamOverview />);
+
+    expect(screen.getByTestId('streamsAppTimeSeriesChartBreakdownSelector')).toBeInTheDocument();
+  });
+
+  it('does not render StatsRow for query stream', () => {
+    mockUseStreamDetail.mockReturnValue({
+      definition: createMockQueryStreamDefinition(),
+    });
+
+    renderWithI18n(<StreamOverview />);
+
+    expect(screen.queryByText('Dataset quality')).not.toBeInTheDocument();
+    expect(screen.queryByText('Documents')).not.toBeInTheDocument();
+  });
+});

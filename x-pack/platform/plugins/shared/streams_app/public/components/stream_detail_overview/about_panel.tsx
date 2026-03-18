@@ -11,11 +11,13 @@ import {
   EuiFlexGroup,
   EuiFlexItem,
   EuiLink,
+  EuiMarkdownFormat,
   EuiPanel,
   EuiSpacer,
   EuiText,
   EuiTitle,
 } from '@elastic/eui';
+import { css } from '@emotion/react';
 import { i18n } from '@kbn/i18n';
 import { Streams } from '@kbn/streams-schema';
 import React from 'react';
@@ -52,7 +54,13 @@ export function AboutPanel() {
   }
 
   return (
-    <EuiPanel hasBorder paddingSize="m">
+    <EuiPanel
+      hasBorder
+      paddingSize="m"
+      css={css`
+        overflow: hidden;
+      `}
+    >
       <EuiFlexGroup
         alignItems="center"
         justifyContent="spaceBetween"
@@ -101,7 +109,9 @@ export function AboutPanel() {
         <>
           <EuiSpacer size="m" />
           {description ? (
-            <EuiText size="s">{description}</EuiText>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              <EuiMarkdownFormat textSize="s">{description}</EuiMarkdownFormat>
+            </div>
           ) : (
             <EuiText size="s">
               <EuiLink href={advancedTabHref}>

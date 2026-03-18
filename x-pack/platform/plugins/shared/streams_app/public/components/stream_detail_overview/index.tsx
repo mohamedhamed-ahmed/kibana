@@ -74,7 +74,7 @@ export function StreamOverview() {
   ];
 
   return (
-    <EuiFlexGroup responsive={false} alignItems="flexStart" gutterSize="m">
+    <EuiFlexGroup alignItems="flexStart" gutterSize="m">
       <EuiFlexItem>
         <EuiFlexGroup direction="column" gutterSize="m">
           {mainSections
