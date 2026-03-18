@@ -87,5 +87,4 @@ describe('DataQualityCard', () => {
     expect(screen.getByTestId('streamsOverviewFailedDocs')).toBeInTheDocument();
     expect(screen.getByLabelText(/Insufficient privilege/i)).toBeInTheDocument();
   });
-
 });
