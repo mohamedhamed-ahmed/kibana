@@ -65,7 +65,7 @@ describe('StreamOverview', () => {
     mockUseTimefilter.mockReturnValue({ refresh: jest.fn() });
   });
 
-  it('renders time filter in sidebar', () => {
+  it('renders about panel in sidebar', () => {
     mockUseStreamDetail.mockReturnValue({
       definition: createMockWiredStreamDefinition(),
     });
