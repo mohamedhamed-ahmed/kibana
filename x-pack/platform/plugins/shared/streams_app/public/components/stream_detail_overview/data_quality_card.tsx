@@ -42,7 +42,7 @@ function FailedDocsNoPrivilege() {
       >
         <EuiButtonIcon
           iconType="warning"
-          color="warning"
+          color="text"
           size="xs"
           href="https://www.elastic.co/docs/manage-data/data-store/data-streams/failure-store"
           target="_blank"
