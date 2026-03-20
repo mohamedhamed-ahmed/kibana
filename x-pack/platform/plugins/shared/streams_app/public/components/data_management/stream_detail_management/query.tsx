@@ -32,7 +32,13 @@ const queryStreamManagementSubTabs = [
 
 type QueryStreamManagementSubTab = (typeof queryStreamManagementSubTabs)[number];
 
-function isValidManagementSubTab(value: string): value is QueryStreamManagementSubTab {
+function isValidManagementSubTab(
+  value: string,
+  overviewPageEnabled: boolean
+): value is QueryStreamManagementSubTab {
+  if (value === 'overview' && !overviewPageEnabled) {
+    return false;
+  }
   return queryStreamManagementSubTabs.includes(value as QueryStreamManagementSubTab);
 }
 
@@ -49,7 +55,7 @@ export function QueryStreamDetailManagement({
   } = useStreamsAppParams('/{key}/management/{tab}');
 
   const {
-    features: { attachments },
+    features: { attachments, overviewPage },
   } = useStreamsPrivileges();
 
   const { isLoading, significantEvents } = useStreamsDetailManagementTabs({
@@ -63,12 +69,14 @@ export function QueryStreamDetailManagement({
 
   const tabs: ManagementTabs = {};
 
-  tabs.overview = {
-    content: <StreamOverview />,
-    label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
-      defaultMessage: 'Overview',
-    }),
-  };
+  if (overviewPage.enabled) {
+    tabs.overview = {
+      content: <StreamOverview />,
+      label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
+        defaultMessage: 'Overview',
+      }),
+    };
+  }
 
   tabs.schema = {
     content: (
@@ -111,9 +119,11 @@ export function QueryStreamDetailManagement({
     ),
   };
 
-  if (!isValidManagementSubTab(tab) || !tabs[tab]?.content) {
+  const defaultTab = overviewPage.enabled ? 'overview' : 'schema';
+
+  if (!isValidManagementSubTab(tab, overviewPage.enabled) || !tabs[tab]?.content) {
     return (
-      <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'overview' } }} />
+      <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: defaultTab } }} />
     );
   }
 

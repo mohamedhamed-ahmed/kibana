@@ -44,7 +44,13 @@ const tabRedirects: Record<string, { newTab: ClassicStreamManagementSubTab }> = 
   enrich: { newTab: 'processing' },
 };
 
-function isValidManagementSubTab(value: string): value is ClassicStreamManagementSubTab {
+function isValidManagementSubTab(
+  value: string,
+  overviewPageEnabled: boolean
+): value is ClassicStreamManagementSubTab {
+  if (value === 'overview' && !overviewPageEnabled) {
+    return false;
+  }
   return classicStreamManagementSubTabs.includes(value as ClassicStreamManagementSubTab);
 }
 
@@ -60,7 +66,7 @@ export function ClassicStreamDetailManagement({
   } = useStreamsAppParams('/{key}/management/{tab}');
 
   const {
-    features: { attachments },
+    features: { attachments, overviewPage },
   } = useStreamsPrivileges();
 
   const { processing, isLoading, ...otherTabs } = useStreamsDetailManagementTabs({
@@ -97,12 +103,14 @@ export function ClassicStreamDetailManagement({
 
   const tabs: ManagementTabs = {};
 
-  tabs.overview = {
-    content: <StreamOverview />,
-    label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
-      defaultMessage: 'Overview',
-    }),
-  };
+  if (overviewPage.enabled) {
+    tabs.overview = {
+      content: <StreamOverview />,
+      label: i18n.translate('xpack.streams.streamDetailView.overviewTab', {
+        defaultMessage: 'Overview',
+      }),
+    };
+  }
 
   if (definition.data_stream_exists) {
     tabs.retention = {
@@ -192,7 +200,13 @@ export function ClassicStreamDetailManagement({
     };
   }
 
-  if (isValidManagementSubTab(tab)) {
+  if (tab === 'overview' && !overviewPage.enabled) {
+    return (
+      <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'retention' } }} />
+    );
+  }
+
+  if (isValidManagementSubTab(tab, overviewPage.enabled)) {
     return <Wrapper tabs={tabs} streamId={key} tab={tab} />;
   }
 
@@ -209,5 +223,6 @@ export function ClassicStreamDetailManagement({
     return null;
   }
 
-  return <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: 'overview' } }} />;
+  const defaultTab = overviewPage.enabled ? 'overview' : 'retention';
+  return <RedirectTo path="/{key}/management/{tab}" params={{ path: { key, tab: defaultTab } }} />;
 }
