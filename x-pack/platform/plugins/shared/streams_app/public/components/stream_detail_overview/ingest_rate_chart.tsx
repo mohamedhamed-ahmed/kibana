@@ -23,7 +23,6 @@ import {
   EuiLoadingChart,
   EuiPanel,
   EuiSpacer,
-  EuiSwitch,
   EuiText,
   EuiTitle,
   formatNumber,
@@ -35,7 +34,7 @@ import type { IUiSettingsClient } from '@kbn/core/public';
 import { UI_SETTINGS } from '@kbn/data-plugin/public';
 import { i18n } from '@kbn/i18n';
 import { Streams } from '@kbn/streams-schema';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import useAsync from 'react-use/lib/useAsync';
 import { useKibana } from '../../hooks/use_kibana';
 import { useStreamDetail } from '../../hooks/use_stream_detail';
@@ -46,7 +45,7 @@ import {
 import { useTimefilter } from '../../hooks/use_timefilter';
 import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
 import { esqlResultToTimeseries } from '../../util/esql_result_to_timeseries';
-import { ChartEmbeddedStats } from './chart_embedded_stats';
+import { ChartEmbeddedQueryDocStats, ChartEmbeddedStats } from './chart_embedded_stats';
 
 const CHART_HEIGHT = 150;
 
@@ -69,29 +68,12 @@ export function IngestRateChart() {
 }
 
 function IngestRateChartContent({ definition }: { definition: Streams.all.GetResponse }) {
-  const [statsVisible, setStatsVisible] = useState(true);
-
   const {
     core: { uiSettings },
   } = useKibana();
   const { euiTheme } = useEuiTheme();
   const chartBaseTheme = useElasticChartsTheme();
   const barSeriesTimeZone = useMemo(() => getChartTimeZone(uiSettings), [uiSettings]);
-
-  const chartToolbarControlShellCss = useMemo(
-    () =>
-      css({
-        boxSizing: 'border-box',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        border: euiTheme.border.thin,
-        borderRadius: `calc(${euiTheme.border.radius.medium} * 1.5)`,
-        padding: `${euiTheme.size.xs} ${euiTheme.size.m}`,
-        minHeight: euiTheme.size.xl,
-      }),
-    [euiTheme]
-  );
 
   const canReadFailureStore = Streams.ingest.all.GetResponse.is(definition)
     ? definition.privileges.read_failure_store
@@ -188,15 +170,6 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
     </div>
   );
 
-  const chartPanelHeaderTitleCss = useMemo(
-    () =>
-      css({
-        flex: 1,
-        minWidth: 0,
-      }),
-    []
-  );
-
   const chartColumnCss = useMemo(
     () =>
       css({
@@ -209,33 +182,7 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
 
   return (
     <EuiPanel hasBorder paddingSize="m">
-      {isIngestStream ? (
-        <EuiFlexGroup
-          justifyContent="spaceBetween"
-          alignItems="flexStart"
-          gutterSize="l"
-          responsive={false}
-        >
-          <EuiFlexItem grow css={chartPanelHeaderTitleCss}>
-            {chartHeader}
-          </EuiFlexItem>
-          <EuiFlexItem grow={false}>
-            <div css={chartToolbarControlShellCss}>
-              <EuiSwitch
-                label={i18n.translate('xpack.streams.streamOverview.timeSeriesChart.statsToggle', {
-                  defaultMessage: 'Stats',
-                })}
-                checked={statsVisible}
-                onChange={(e) => setStatsVisible(e.target.checked)}
-                compressed
-                data-test-subj="streamsAppStreamOverviewStatsToggle"
-              />
-            </div>
-          </EuiFlexItem>
-        </EuiFlexGroup>
-      ) : (
-        chartHeader
-      )}
+      {chartHeader}
       <EuiSpacer size="m" />
 
       <EuiFlexGroup
@@ -344,13 +291,19 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
             </EuiFlexGroup>
           </>
         </EuiFlexItem>
-        {isIngestStream && statsVisible ? (
+        {isIngestStream ? (
           <ChartEmbeddedStats
             definition={definition}
             statsHistogramResult={histogramResult}
             docCountInRange={docCountInRange}
           />
-        ) : null}
+        ) : (
+          <ChartEmbeddedQueryDocStats
+            esqlSource={esqlSource}
+            statsHistogramResult={histogramResult}
+            docCountInRange={docCountInRange}
+          />
+        )}
       </EuiFlexGroup>
     </EuiPanel>
   );

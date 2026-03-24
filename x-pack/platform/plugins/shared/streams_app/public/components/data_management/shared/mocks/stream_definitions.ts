@@ -112,6 +112,7 @@ export const createMockQueryStreamDefinition = (
   overrides: Partial<Streams.QueryStream.GetResponse> = {}
 ): Streams.QueryStream.GetResponse => ({
   stream: {
+    type: 'query',
     name: 'logs.ecs.query',
     description: '',
     updated_at: '2024-01-01T00:00:00.000Z',

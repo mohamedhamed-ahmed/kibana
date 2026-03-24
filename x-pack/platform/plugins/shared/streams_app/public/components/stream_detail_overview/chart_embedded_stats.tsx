@@ -5,16 +5,26 @@
  * 2.0.
  */
 
-import { EuiFlexGroup, EuiFlexItem, formatNumber, useEuiTheme } from '@elastic/eui';
+import { EuiFlexGroup, EuiFlexItem, useEuiTheme } from '@elastic/eui';
 import type { ESQLSearchResponse } from '@kbn/es-types';
-import { i18n } from '@kbn/i18n';
 import type { Streams } from '@kbn/streams-schema';
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import type { AsyncState } from 'react-use/lib/useAsync';
 import { useDataStreamStats } from '../data_management/stream_detail_lifecycle/hooks/use_data_stream_stats';
 import { formatBytes } from '../data_management/stream_detail_lifecycle/helpers/format_bytes';
+import { useKibana } from '../../hooks/use_kibana';
+import { useStreamsAppFetch } from '../../hooks/use_streams_app_fetch';
 import { useTimefilter } from '../../hooks/use_timefilter';
 import { OverviewStatWithTotal } from './overview_stat';
+import {
+  chartEmbeddedDocCountDescription,
+  chartEmbeddedEstimatedStorageLabel,
+  chartEmbeddedEstimatedStorageTooltip,
+  chartEmbeddedTotalDocsLine,
+  chartEmbeddedTotalStorageLine,
+  fetchEsqlTotalDocCount,
+  histogramRangeDocCountTitle,
+} from './chart_embedded_stats_helpers';
 
 interface ChartEmbeddedStatsProps {
   definition: Streams.ingest.all.GetResponse;
@@ -24,22 +34,92 @@ interface ChartEmbeddedStatsProps {
   docCountInRange: number;
 }
 
+function ChartStatsAside({ children }: { children: ReactNode }) {
+  const { euiTheme } = useEuiTheme();
+  return (
+    <EuiFlexItem
+      grow={false}
+      css={{ minWidth: euiTheme.size.xxl, maxWidth: 240 }}
+      data-test-subj="streamsAppStreamOverviewChartEmbeddedStats"
+    >
+      {children}
+    </EuiFlexItem>
+  );
+}
+
+function DocCountStatRow({
+  statsHistogramResult,
+  docCountInRange,
+  totalLine,
+}: {
+  statsHistogramResult: AsyncState<ESQLSearchResponse>;
+  docCountInRange: number;
+  totalLine: string;
+}) {
+  return (
+    <OverviewStatWithTotal
+      description={chartEmbeddedDocCountDescription()}
+      rangeTitle={histogramRangeDocCountTitle(statsHistogramResult, docCountInRange)}
+      totalLine={totalLine}
+      isLoading={statsHistogramResult.loading}
+      dataTestSubj="streamsOverviewDocCount"
+    />
+  );
+}
+
 /**
- * Time-range document count + estimated storage, with all-time totals — shown beside the overview chart.
+ * Doc count for the selected time range plus all-time total from the query view (query streams — no storage estimate).
+ */
+export function ChartEmbeddedQueryDocStats({
+  esqlSource,
+  statsHistogramResult,
+  docCountInRange,
+}: {
+  /** ES|QL `FROM` target (`definition.stream.query.view` for query streams). */
+  esqlSource: string;
+  statsHistogramResult: AsyncState<ESQLSearchResponse>;
+  docCountInRange: number;
+}) {
+  const {
+    dependencies: {
+      start: { data },
+    },
+  } = useKibana();
+
+  const totalDocsResult = useStreamsAppFetch(
+    async ({ signal }) => {
+      return fetchEsqlTotalDocCount(esqlSource, data.search.search, signal);
+    },
+    [esqlSource, data.search.search],
+    { withRefresh: true }
+  );
+
+  const totalDocsLine = totalDocsResult.loading
+    ? '—'
+    : totalDocsResult.error
+    ? '—'
+    : chartEmbeddedTotalDocsLine(totalDocsResult.value ?? 0);
+
+  return (
+    <ChartStatsAside>
+      <DocCountStatRow
+        statsHistogramResult={statsHistogramResult}
+        docCountInRange={docCountInRange}
+        totalLine={totalDocsLine}
+      />
+    </ChartStatsAside>
+  );
+}
+
+/**
+ * Time-range document count + estimated storage, with all-time totals — shown beside the overview chart (ingest streams).
  */
 export function ChartEmbeddedStats({
   definition,
   statsHistogramResult,
   docCountInRange,
 }: ChartEmbeddedStatsProps) {
-  const { euiTheme } = useEuiTheme();
   const { timeState } = useTimefilter();
-
-  const rangeDocTitle = statsHistogramResult.loading
-    ? '—'
-    : statsHistogramResult.error
-    ? '—'
-    : formatNumber(docCountInRange, '0a');
 
   const { stats, isLoading: isStatsLoading } = useDataStreamStats({ definition, timeState });
   const canReadFailureStore = definition.privileges.read_failure_store;
@@ -49,7 +129,6 @@ export function ChartEmbeddedStats({
   const failureDocsAllTime = stats?.fs?.stats?.count ?? 0;
   const failureSizeBytes = stats?.fs?.stats?.size ?? 0;
 
-  // Histogram counts main + ::failures when the user can read the failure store
   const totalDocsForStorageAvg = canReadFailureStore
     ? mainDocsAllTime + failureDocsAllTime
     : mainDocsAllTime;
@@ -71,62 +150,32 @@ export function ChartEmbeddedStats({
     !isStorageLoading && !statsHistogramResult.error ? formatBytes(estimatedSizeBytesInRange) : '—';
 
   const showTotals = stats !== undefined && !isStatsLoading;
-  const totalDocsLine = showTotals
-    ? i18n.translate('xpack.streams.streamOverview.chartEmbeddedStats.totalDocsLine', {
-        defaultMessage: 'Total {value}',
-        values: { value: formatNumber(totalDocsForStorageAvg, '0a') },
-      })
-    : '—';
-
+  const totalDocsLine = showTotals ? chartEmbeddedTotalDocsLine(totalDocsForStorageAvg) : '—';
   const totalStorageLine = showTotals
-    ? i18n.translate('xpack.streams.streamOverview.chartEmbeddedStats.totalStorageLine', {
-        defaultMessage: 'Total {value}',
-        values: { value: formatBytes(totalSizeBytesForStorage) },
-      })
+    ? chartEmbeddedTotalStorageLine(totalSizeBytesForStorage)
     : '—';
-
-  const storageInfoTooltip = i18n.translate(
-    'xpack.streams.streamOverview.chartEmbeddedStats.estimatedStorageTooltip',
-    {
-      defaultMessage: 'The approximate amount of data stored in the selected time range.',
-    }
-  );
 
   return (
-    <EuiFlexItem
-      grow={false}
-      css={{ minWidth: euiTheme.size.xxl, maxWidth: 240 }}
-      data-test-subj="streamsAppStreamOverviewChartEmbeddedStats"
-    >
+    <ChartStatsAside>
       <EuiFlexGroup direction="column" gutterSize="l" responsive={false}>
         <EuiFlexItem grow={false}>
-          <OverviewStatWithTotal
-            description={i18n.translate(
-              'xpack.streams.streamOverview.chartEmbeddedStats.docCountLabel',
-              {
-                defaultMessage: 'Doc count',
-              }
-            )}
-            rangeTitle={rangeDocTitle}
+          <DocCountStatRow
+            statsHistogramResult={statsHistogramResult}
+            docCountInRange={docCountInRange}
             totalLine={totalDocsLine}
-            isLoading={statsHistogramResult.loading}
-            dataTestSubj="streamsOverviewDocCount"
           />
         </EuiFlexItem>
         <EuiFlexItem grow={false}>
           <OverviewStatWithTotal
-            description={i18n.translate(
-              'xpack.streams.streamOverview.chartEmbeddedStats.estimatedStorageLabel',
-              { defaultMessage: 'Estimated storage size' }
-            )}
+            description={chartEmbeddedEstimatedStorageLabel()}
             rangeTitle={rangeStorageTitle}
             totalLine={totalStorageLine}
             isLoading={isStorageLoading}
-            descriptionInfoTooltip={storageInfoTooltip}
+            descriptionInfoTooltip={chartEmbeddedEstimatedStorageTooltip()}
             dataTestSubj="streamsOverviewStorageSize"
           />
         </EuiFlexItem>
       </EuiFlexGroup>
-    </EuiFlexItem>
+    </ChartStatsAside>
   );
 }

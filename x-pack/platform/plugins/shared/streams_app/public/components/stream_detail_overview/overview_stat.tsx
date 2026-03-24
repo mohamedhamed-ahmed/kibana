@@ -67,7 +67,8 @@ export function OverviewStatWithTotal({
 }: {
   description: string;
   rangeTitle: React.ReactNode;
-  totalLine: string;
+  /** When omitted, the subdued total line is not rendered (e.g. query streams with no all-time total). */
+  totalLine?: string;
   isLoading: boolean;
   descriptionInfoTooltip?: string;
   dataTestSubj?: string;
@@ -78,7 +79,7 @@ export function OverviewStatWithTotal({
     <div data-test-subj={dataTestSubj}>
       <EuiFlexGroup gutterSize="xs" alignItems="center" responsive={false} wrap={false}>
         <EuiFlexItem grow={false}>
-          <EuiText size="s" color="subdued">
+          <EuiText size="xs" color="subdued">
             {description}
           </EuiText>
         </EuiFlexItem>
@@ -101,7 +102,7 @@ export function OverviewStatWithTotal({
       </EuiFlexGroup>
       <EuiSpacer size="xs" />
       <EuiTitle
-        size="s"
+        size="xs"
         css={{
           color: euiTheme.colors.text,
           lineHeight: 1.2,
@@ -109,10 +110,14 @@ export function OverviewStatWithTotal({
       >
         <span>{isLoading ? '—' : rangeTitle}</span>
       </EuiTitle>
-      <EuiSpacer size="xs" />
-      <EuiText size="s" color="subdued">
-        {totalLine}
-      </EuiText>
+      {totalLine !== undefined ? (
+        <>
+          <EuiSpacer size="xs" />
+          <EuiText size="xs" color="subdued">
+            {totalLine}
+          </EuiText>
+        </>
+      ) : null}
     </div>
   );
 }
