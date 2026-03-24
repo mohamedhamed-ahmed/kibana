@@ -214,8 +214,7 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
           justifyContent="spaceBetween"
           alignItems="flexStart"
           gutterSize="l"
-          responsive
-          wrap
+          responsive={false}
         >
           <EuiFlexItem grow css={chartPanelHeaderTitleCss}>
             {chartHeader}

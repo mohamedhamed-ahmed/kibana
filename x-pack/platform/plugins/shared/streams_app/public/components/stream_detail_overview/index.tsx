@@ -5,9 +5,14 @@
  * 2.0.
  */
 
-import { EuiFlexGroup, EuiFlexItem, EuiSuperDatePicker } from '@elastic/eui';
+import {
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiSuperDatePicker,
+  useIsWithinBreakpoints,
+} from '@elastic/eui';
 import { Streams } from '@kbn/streams-schema';
-import React, { type ReactNode } from 'react';
+import React, { type CSSProperties, type ReactNode, useMemo } from 'react';
 import { useStreamDetail } from '../../hooks/use_stream_detail';
 import { useTimeRange } from '../../hooks/use_time_range';
 import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
@@ -43,6 +48,18 @@ export function StreamOverview() {
   const { definition } = useStreamDetail();
 
   const isIngest = Streams.ingest.all.GetResponse.is(definition);
+  /** Match EuiFlexGroup responsive `m` max-breakpoint so sidebar stacks above main when narrow. */
+  const isStackedOverviewLayout = useIsWithinBreakpoints(['xs', 's', 'm']);
+
+  const mainColumnStyle = useMemo<CSSProperties | undefined>(
+    () => (isStackedOverviewLayout ? { width: '100%' } : undefined),
+    [isStackedOverviewLayout]
+  );
+
+  const sidebarColumnStyle = useMemo<CSSProperties>(
+    () => (isStackedOverviewLayout ? { width: '100%' } : { width: 450 }),
+    [isStackedOverviewLayout]
+  );
 
   const mainSections: OverviewSection[] = [
     { id: 'ingest-rate-chart', node: <IngestRateChart />, show: true },
@@ -60,8 +77,13 @@ export function StreamOverview() {
   ];
 
   return (
-    <EuiFlexGroup alignItems="flexStart" gutterSize="m">
-      <EuiFlexItem>
+    <EuiFlexGroup
+      alignItems="flexStart"
+      gutterSize="m"
+      direction={isStackedOverviewLayout ? 'columnReverse' : 'row'}
+      responsive={false}
+    >
+      <EuiFlexItem grow={!isStackedOverviewLayout} style={mainColumnStyle}>
         <EuiFlexGroup direction="column" gutterSize="m">
           {mainSections
             .filter((s) => s.show)
@@ -73,7 +95,7 @@ export function StreamOverview() {
         </EuiFlexGroup>
       </EuiFlexItem>
 
-      <EuiFlexItem grow={false} style={{ width: 450 }}>
+      <EuiFlexItem grow={false} style={sidebarColumnStyle}>
         <EuiFlexGroup direction="column" gutterSize="m">
           {sidebarSections
             .filter((s) => s.show)
