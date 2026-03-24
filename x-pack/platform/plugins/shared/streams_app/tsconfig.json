@@ -38,7 +38,6 @@
     "@kbn/react-hooks",
     "@kbn/react-kibana-mount",
     "@kbn/react-field",
-    "@kbn/field-utils",
     "@kbn/object-utils",
     "@kbn/shared-ux-utility",
     "@kbn/unsaved-changes-prompt",
