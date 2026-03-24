@@ -5,7 +5,17 @@
  * 2.0.
  */
 
-import { EuiStat, EuiText } from '@elastic/eui';
+import {
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiIconTip,
+  EuiSpacer,
+  EuiStat,
+  EuiText,
+  EuiTitle,
+  useEuiTheme,
+} from '@elastic/eui';
+import { i18n } from '@kbn/i18n';
 import React from 'react';
 
 /**
@@ -17,12 +27,14 @@ export function OverviewStat({
   description,
   isLoading,
   titleSize = 's',
+  titleColor,
   dataTestSubj,
 }: {
   title: React.ReactNode;
   description: string;
   isLoading: boolean;
   titleSize?: 's' | 'm';
+  titleColor?: 'primary' | 'success' | 'danger' | 'warning' | 'accent' | 'text';
   dataTestSubj?: string;
 }) {
   return (
@@ -35,7 +47,72 @@ export function OverviewStat({
       }
       isLoading={isLoading}
       titleSize={titleSize}
+      titleColor={titleColor}
       data-test-subj={dataTestSubj}
     />
+  );
+}
+
+/**
+ * Stat used next to the ingest chart: primary value reflects the selected time range;
+ * subdued line below shows all-time totals (not time-filtered).
+ */
+export function OverviewStatWithTotal({
+  description,
+  rangeTitle,
+  totalLine,
+  isLoading,
+  descriptionInfoTooltip,
+  dataTestSubj,
+}: {
+  description: string;
+  rangeTitle: React.ReactNode;
+  totalLine: string;
+  isLoading: boolean;
+  descriptionInfoTooltip?: string;
+  dataTestSubj?: string;
+}) {
+  const { euiTheme } = useEuiTheme();
+
+  return (
+    <div data-test-subj={dataTestSubj}>
+      <EuiFlexGroup gutterSize="xs" alignItems="center" responsive={false} wrap={false}>
+        <EuiFlexItem grow={false}>
+          <EuiText size="s" color="subdued">
+            {description}
+          </EuiText>
+        </EuiFlexItem>
+        {descriptionInfoTooltip ? (
+          <EuiFlexItem grow={false}>
+            <EuiIconTip
+              type="question"
+              color="subdued"
+              size="s"
+              content={descriptionInfoTooltip}
+              aria-label={i18n.translate(
+                'xpack.streams.streamOverview.overviewStat.moreInfoAriaLabel',
+                {
+                  defaultMessage: 'More information',
+                }
+              )}
+            />
+          </EuiFlexItem>
+        ) : null}
+      </EuiFlexGroup>
+      <EuiSpacer size="xs" />
+      <EuiTitle
+        size="s"
+        css={{
+          color: euiTheme.colors.text,
+          lineHeight: 1.2,
+        }}
+      >
+        <span>{isLoading ? '—' : rangeTitle}</span>
+      </EuiTitle>
+      <EuiSpacer size="xs" />
+      <EuiText size="s" color="subdued">
+        {totalLine}
+      </EuiText>
+    </div>
   );
 }

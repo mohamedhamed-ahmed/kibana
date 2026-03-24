@@ -16,6 +16,12 @@ import { executeEsqlQuery } from './use_execute_esql_query';
 
 const HISTOGRAM_BREAKDOWN_LIMIT = 10_000;
 
+/**
+ * Default bucket count for ES|QL time histograms (`BUCKET(@timestamp, …)`). Use the same value
+ * for the streams list and stream overview so doc counts stay comparable for the time range.
+ */
+export const STREAMS_HISTOGRAM_NUM_DATA_POINTS = 25;
+
 export interface StreamDocCountsFetch {
   docCount: Promise<StreamDocsStat[]>;
   failedDocCount: Promise<StreamDocsStat[]>;
@@ -151,7 +157,9 @@ export function useStreamDocCountsFetch({
       return docCountsFetch;
     },
     getStreamHistogram(streamName: string, breakdownField?: string): Promise<UnparsedEsqlResponse> {
-      const cacheKey = `${streamName}::${breakdownField ?? ''}`;
+      const cacheKey = `${streamName}::${breakdownField ?? ''}::${timeState.start}::${
+        timeState.end
+      }`;
       const cachedPromise = histogramPromiseCache.current[cacheKey];
       if (cachedPromise) {
         return cachedPromise;

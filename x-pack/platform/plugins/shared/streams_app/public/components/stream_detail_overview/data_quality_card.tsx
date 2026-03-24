@@ -15,7 +15,6 @@ import {
   EuiTitle,
   EuiToolTip,
   formatNumber,
-  useEuiTheme,
 } from '@elastic/eui';
 import { calculatePercentage, DatasetQualityIndicator } from '@kbn/dataset-quality-plugin/public';
 import { i18n } from '@kbn/i18n';
@@ -28,7 +27,6 @@ import { useKibana } from '../../hooks/use_kibana';
 import { executeEsqlQuery } from '../../hooks/use_execute_esql_query';
 import { calculateDataQuality } from '../../util/calculate_data_quality';
 import { OverviewStat } from './overview_stat';
-import { statDividerCss } from './utils';
 
 function FailedDocsNoPrivilege() {
   return (
@@ -68,7 +66,6 @@ export function DataQualityCard() {
 
 function DataQualityCardContent({ definition }: { definition: Streams.ingest.all.GetResponse }) {
   const router = useStreamsAppRouter();
-  const { euiTheme } = useEuiTheme();
   const {
     dependencies: {
       start: {
@@ -81,13 +78,16 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   const canReadFailureStore = definition.privileges.read_failure_store;
   const streamName = definition.stream.name;
 
+  const dataSourceForTimeRange = canReadFailureStore
+    ? `${streamName},${streamName}::failures`
+    : streamName;
+
   // Total docs: simple COUNT(*) over the selected time range.
   // Includes ::failures when the user has read_failure_store privilege
   const totalDocsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
-      const source = canReadFailureStore ? `${streamName},${streamName}::failures` : streamName;
       const response = await executeEsqlQuery({
-        query: `FROM ${source} | STATS doc_count = COUNT(*)`,
+        query: `FROM ${dataSourceForTimeRange} | STATS doc_count = COUNT(*)`,
         search: data.search.search,
         signal,
         start: ts!.start,
@@ -96,22 +96,27 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
       const colIdx = response.columns.findIndex((c) => c.name === 'doc_count');
       return colIdx !== -1 ? (response.values[0]?.[colIdx] as number) ?? 0 : 0;
     },
-    [streamName, canReadFailureStore, data.search.search],
+    [dataSourceForTimeRange, data.search.search],
     { withTimeRange: true, withRefresh: true }
   );
 
-  // Degraded docs: documents where at least one field was ignored (_ignored exists).
-  // This endpoint is not time-filtered; it queries the last backing index.
+  // Degraded docs: documents with at least one ignored field (_ignored) in the same time range
+  // and data sources as total docs. (The degraded REST API is not time-filtered and only hits
+  // the latest backing index — mixing it with a time-filtered total produced >100% percentages.)
   const degradedDocsResult = useStreamsAppFetch(
-    async ({ signal }) => {
-      const result = await streamsRepositoryClient.fetch(
-        'GET /internal/streams/doc_counts/degraded',
-        { signal, params: { query: { stream: streamName } } }
-      );
-      return result.find((d) => d.stream === streamName)?.count ?? 0;
+    async ({ signal, timeState: ts }) => {
+      const response = await executeEsqlQuery({
+        query: `FROM ${dataSourceForTimeRange} METADATA _ignored | WHERE _ignored IS NOT NULL | STATS degraded_doc_count = COUNT(*)`,
+        search: data.search.search,
+        signal,
+        start: ts!.start,
+        end: ts!.end,
+      });
+      const colIdx = response.columns.findIndex((c) => c.name === 'degraded_doc_count');
+      return colIdx !== -1 ? (response.values[0]?.[colIdx] as number) ?? 0 : 0;
     },
-    [streamName, streamsRepositoryClient],
-    { withRefresh: true }
+    [dataSourceForTimeRange, data.search.search],
+    { withTimeRange: true, withRefresh: true }
   );
 
   // Failed docs: documents routed to the failure store (time-filtered).
@@ -136,7 +141,7 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   const ignoredFieldsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
       const response = await executeEsqlQuery({
-        query: `FROM ${streamName} METADATA _ignored | WHERE _ignored IS NOT NULL | STATS ignored_fields_count = COUNT_DISTINCT(_ignored)`,
+        query: `FROM ${dataSourceForTimeRange} METADATA _ignored | WHERE _ignored IS NOT NULL | STATS ignored_fields_count = COUNT_DISTINCT(_ignored)`,
         search: data.search.search,
         signal,
         start: ts!.start,
@@ -145,7 +150,7 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
       const countCol = response.columns.findIndex((c) => c.name === 'ignored_fields_count');
       return countCol !== -1 ? (response.values[0]?.[countCol] as number) ?? 0 : 0;
     },
-    [streamName, data.search.search],
+    [dataSourceForTimeRange, data.search.search],
     { withTimeRange: true, withRefresh: true }
   );
 
@@ -176,7 +181,6 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   });
 
   const formatPct = (value: number) => `${formatNumber(value, '0.[00]')}%`;
-  const dividerCss = statDividerCss(euiTheme);
 
   return (
     <EuiPanel hasBorder paddingSize="m">
@@ -201,8 +205,8 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
         <EuiFlexItem />
         <EuiFlexItem grow={false}>
           <EuiLink href={dataQualityTabHref} data-test-subj="streamsOverviewDataQualityLink">
-            {i18n.translate('xpack.streams.streamOverview.dataQualityCard.seeDetails', {
-              defaultMessage: 'See details',
+            {i18n.translate('xpack.streams.streamOverview.dataQualityCard.viewAll', {
+              defaultMessage: 'View all',
             })}
           </EuiLink>
         </EuiFlexItem>
@@ -210,8 +214,13 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
 
       <EuiSpacer size="m" />
 
-      <EuiFlexGroup gutterSize="none" responsive={false} alignItems="center">
-        <EuiFlexItem>
+      <EuiFlexGroup
+        justifyContent="spaceBetween"
+        alignItems="flexStart"
+        responsive
+        gutterSize="none"
+      >
+        <EuiFlexItem grow={false}>
           <OverviewStat
             title={formatPct(degradedPercentage)}
             description={i18n.translate(
@@ -219,22 +228,24 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
               { defaultMessage: 'Degraded docs' }
             )}
             isLoading={isQualityLoading}
+            titleColor="warning"
             dataTestSubj="streamsOverviewDegradedDocs"
           />
         </EuiFlexItem>
 
-        <EuiFlexItem css={dividerCss}>
+        <EuiFlexItem grow={false}>
           <OverviewStat
             title={canReadFailureStore ? formatPct(failedPercentage) : <FailedDocsNoPrivilege />}
             description={i18n.translate('xpack.streams.streamOverview.dataQualityCard.failedDocs', {
               defaultMessage: 'Failed docs',
             })}
             isLoading={canReadFailureStore ? failedDocsResult.loading : false}
+            titleColor={canReadFailureStore ? 'danger' : undefined}
             dataTestSubj="streamsOverviewFailedDocs"
           />
         </EuiFlexItem>
 
-        <EuiFlexItem css={dividerCss}>
+        <EuiFlexItem grow={false}>
           <OverviewStat
             title={formatNumber(ignoredFieldsResult.value ?? 0, '0,0')}
             description={i18n.translate(

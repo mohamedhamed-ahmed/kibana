@@ -14,7 +14,6 @@ import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
 import { useTimefilter } from '../../hooks/use_timefilter';
 import { AboutPanel } from './about_panel';
 import { DataQualityCard } from './data_quality_card';
-import { StatsCards } from './stats_cards';
 import { IngestRateChart } from './ingest_rate_chart';
 
 interface OverviewSection {
@@ -40,27 +39,14 @@ function OverviewTimeFilter() {
   );
 }
 
-function StatsRow() {
-  return (
-    <EuiFlexGroup gutterSize="m" responsive={false}>
-      <EuiFlexItem>
-        <DataQualityCard />
-      </EuiFlexItem>
-      <EuiFlexItem>
-        <StatsCards />
-      </EuiFlexItem>
-    </EuiFlexGroup>
-  );
-}
-
 export function StreamOverview() {
   const { definition } = useStreamDetail();
 
   const isIngest = Streams.ingest.all.GetResponse.is(definition);
 
   const mainSections: OverviewSection[] = [
-    { id: 'stats-quality', node: <StatsRow />, show: isIngest },
     { id: 'ingest-rate-chart', node: <IngestRateChart />, show: true },
+    { id: 'dataset-quality', node: <DataQualityCard />, show: isIngest },
     // Ticket 2
     // { id: 'systems', node: <SystemsPanel />, show: isIngest },
     // { id: 'attachments', node: <AttachmentList />, show: true },

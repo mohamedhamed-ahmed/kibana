@@ -18,30 +18,45 @@ import {
 } from '@elastic/charts';
 import type { BrushEndListener, XYBrushEvent } from '@elastic/charts';
 import {
-  EuiComboBox,
   EuiFlexGroup,
   EuiFlexItem,
   EuiLoadingChart,
   EuiPanel,
   EuiSpacer,
+  EuiSwitch,
+  EuiText,
+  EuiTitle,
+  formatNumber,
   useEuiTheme,
 } from '@elastic/eui';
+import { css } from '@emotion/react';
 import { useElasticChartsTheme } from '@kbn/charts-theme';
-import { fieldSupportsBreakdown } from '@kbn/field-utils';
+import type { IUiSettingsClient } from '@kbn/core/public';
+import { UI_SETTINGS } from '@kbn/data-plugin/public';
 import { i18n } from '@kbn/i18n';
-import { FieldIcon } from '@kbn/react-field';
-import { getParentId, Streams } from '@kbn/streams-schema';
+import { Streams } from '@kbn/streams-schema';
 import React, { useCallback, useMemo, useState } from 'react';
 import useAsync from 'react-use/lib/useAsync';
-import { useStreamDataViewFieldTypes } from '../../hooks/use_stream_data_view_field_types';
+import { useKibana } from '../../hooks/use_kibana';
 import { useStreamDetail } from '../../hooks/use_stream_detail';
-import { useStreamDocCountsFetch } from '../../hooks/use_streams_doc_counts_fetch';
+import {
+  STREAMS_HISTOGRAM_NUM_DATA_POINTS,
+  useStreamDocCountsFetch,
+} from '../../hooks/use_streams_doc_counts_fetch';
 import { useTimefilter } from '../../hooks/use_timefilter';
 import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
 import { esqlResultToTimeseries } from '../../util/esql_result_to_timeseries';
-import { OVERVIEW_NUM_DATA_POINTS } from './utils';
+import { ChartEmbeddedStats } from './chart_embedded_stats';
 
 const CHART_HEIGHT = 150;
+
+function getChartTimeZone(uiSettings: IUiSettingsClient) {
+  const kibanaTimeZone = uiSettings.get<'Browser' | string>(UI_SETTINGS.DATEFORMAT_TZ);
+  if (!kibanaTimeZone || kibanaTimeZone === 'Browser') {
+    return 'local';
+  }
+  return kibanaTimeZone;
+}
 
 export function IngestRateChart() {
   const { definition } = useStreamDetail();
@@ -54,47 +69,52 @@ export function IngestRateChart() {
 }
 
 function IngestRateChartContent({ definition }: { definition: Streams.all.GetResponse }) {
-  const [breakdownField, setBreakdownField] = useState<string | undefined>(undefined);
+  const [statsVisible, setStatsVisible] = useState(true);
 
+  const {
+    core: { uiSettings },
+  } = useKibana();
   const { euiTheme } = useEuiTheme();
   const chartBaseTheme = useElasticChartsTheme();
+  const barSeriesTimeZone = useMemo(() => getChartTimeZone(uiSettings), [uiSettings]);
 
-  // Query streams have no failure store; only ingest streams carry the privilege flag.
+  const chartToolbarControlShellCss = useMemo(
+    () =>
+      css({
+        boxSizing: 'border-box',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: euiTheme.border.thin,
+        borderRadius: `calc(${euiTheme.border.radius.medium} * 1.5)`,
+        padding: `${euiTheme.size.xs} ${euiTheme.size.m}`,
+        minHeight: euiTheme.size.xl,
+      }),
+    [euiTheme]
+  );
+
   const canReadFailureStore = Streams.ingest.all.GetResponse.is(definition)
     ? definition.privileges.read_failure_store
     : false;
   const streamName = definition.stream.name;
   const isQueryStream = Streams.QueryStream.GetResponse.is(definition);
+  const isIngestStream = Streams.ingest.all.GetResponse.is(definition);
 
-  // Query streams expose data via their $.prefixed ES|QL view, not via the plain stream name.
-  const esqlSource = isQueryStream
-    ? definition.stream.query.view // e.g. "$.logs.otel.query"
-    : streamName; // e.g. "logs.otel"
-
-  const fieldCapsSource = isQueryStream ? getParentId(streamName) ?? streamName : streamName;
-  const { dataView } = useStreamDataViewFieldTypes(fieldCapsSource);
+  const esqlSource = isQueryStream ? definition.stream.query.view : streamName;
 
   const { timeState } = useTimefilter();
-  const minInterval = Math.floor((timeState.end - timeState.start) / OVERVIEW_NUM_DATA_POINTS);
-  const xFormatter = niceTimeFormatter([timeState.start, timeState.end]);
-
-  const breakdownOptions = useMemo(
-    () =>
-      (dataView?.fields ?? [])
-        .filter(fieldSupportsBreakdown)
-        .filter((f) => f.name !== '@timestamp')
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((f) => ({ label: f.name, prepend: <FieldIcon type={f.type} size="s" /> })),
-    [dataView]
+  const minInterval = Math.floor(
+    (timeState.end - timeState.start) / STREAMS_HISTOGRAM_NUM_DATA_POINTS
   );
+  const xFormatter = niceTimeFormatter([timeState.start, timeState.end]);
 
   const { getStreamHistogram } = useStreamDocCountsFetch({
     groupTotalCountByTimestamp: true,
     canReadFailureStore,
-    numDataPoints: OVERVIEW_NUM_DATA_POINTS,
+    numDataPoints: STREAMS_HISTOGRAM_NUM_DATA_POINTS,
   });
 
-  const histogramFetch = getStreamHistogram(esqlSource, breakdownField);
+  const histogramFetch = getStreamHistogram(esqlSource, undefined);
   const histogramResult = useAsync(() => histogramFetch, [histogramFetch]);
 
   const allTimeseries = useMemo(
@@ -106,7 +126,14 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
     [histogramResult]
   );
 
-  const showLegend = breakdownField !== undefined && allTimeseries.length > 1;
+  const docCountInRange = useMemo(
+    () =>
+      allTimeseries.reduce(
+        (acc, series) => acc + series.data.reduce((sum, item) => sum + (item.doc_count ?? 0), 0),
+        0
+      ),
+    [allTimeseries]
+  );
 
   const { updateTimeRange } = useTimeRangeUpdate();
   const onBrushEnd = useCallback<BrushEndListener>(
@@ -122,98 +149,210 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
     [updateTimeRange]
   );
 
+  const documentsSeriesName = i18n.translate(
+    'xpack.streams.streamOverview.timeSeriesChart.legend.documents',
+    { defaultMessage: 'Documents' }
+  );
+
+  const chartHeaderCountDisplay =
+    histogramResult.loading && !histogramResult.value
+      ? '—'
+      : histogramResult.error
+      ? '—'
+      : formatNumber(docCountInRange, '0,0');
+
+  const chartHeaderTitle = i18n.translate(
+    'xpack.streams.streamOverview.timeSeriesChart.headerTitle',
+    {
+      defaultMessage: 'Documents ({count})',
+      values: { count: chartHeaderCountDisplay },
+    }
+  );
+
+  const chartHeaderSubtitle = i18n.translate(
+    'xpack.streams.streamOverview.timeSeriesChart.headerSubtitle',
+    {
+      defaultMessage: 'For selected time-range',
+    }
+  );
+
+  const chartHeader = (
+    <div data-test-subj="streamsAppStreamOverviewChartHeader">
+      <EuiTitle size="s">
+        <h3>{chartHeaderTitle}</h3>
+      </EuiTitle>
+      <EuiSpacer size="xs" />
+      <EuiText size="xs" color="subdued">
+        {chartHeaderSubtitle}
+      </EuiText>
+    </div>
+  );
+
+  const chartPanelHeaderTitleCss = useMemo(
+    () =>
+      css({
+        flex: 1,
+        minWidth: 0,
+      }),
+    []
+  );
+
+  const chartColumnCss = useMemo(
+    () =>
+      css({
+        alignSelf: 'flex-start',
+        minWidth: 0,
+        width: '100%',
+      }),
+    []
+  );
+
   return (
     <EuiPanel hasBorder paddingSize="m">
-      <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
-        <EuiFlexItem grow={false} style={{ minWidth: 200 }}>
-          <EuiComboBox
-            placeholder={i18n.translate(
-              'xpack.streams.streamOverview.timeSeriesChart.breakdown.placeholder',
-              { defaultMessage: 'No breakdown' }
-            )}
-            options={breakdownOptions}
-            selectedOptions={breakdownField ? [{ label: breakdownField }] : []}
-            onChange={(selected) => setBreakdownField(selected[0]?.label)}
-            singleSelection={{ asPlainText: true }}
-            isClearable
-            isLoading={!dataView}
-            compressed
-            data-test-subj="streamsAppTimeSeriesChartBreakdownSelector"
-            aria-label={i18n.translate(
-              'xpack.streams.streamOverview.timeSeriesChart.breakdown.ariaLabel',
-              { defaultMessage: 'Select breakdown field' }
-            )}
-          />
-        </EuiFlexItem>
-      </EuiFlexGroup>
-
-      <EuiSpacer size="m" />
-
-      {histogramResult.loading && !histogramResult.value ? (
-        <EuiFlexGroup justifyContent="center" alignItems="center" style={{ height: CHART_HEIGHT }}>
+      {isIngestStream ? (
+        <EuiFlexGroup
+          justifyContent="spaceBetween"
+          alignItems="flexStart"
+          gutterSize="l"
+          responsive
+          wrap
+        >
+          <EuiFlexItem grow css={chartPanelHeaderTitleCss}>
+            {chartHeader}
+          </EuiFlexItem>
           <EuiFlexItem grow={false}>
-            <EuiLoadingChart size="l" />
+            <div css={chartToolbarControlShellCss}>
+              <EuiSwitch
+                label={i18n.translate('xpack.streams.streamOverview.timeSeriesChart.statsToggle', {
+                  defaultMessage: 'Stats',
+                })}
+                checked={statsVisible}
+                onChange={(e) => setStatsVisible(e.target.checked)}
+                compressed
+                data-test-subj="streamsAppStreamOverviewStatsToggle"
+              />
+            </div>
           </EuiFlexItem>
         </EuiFlexGroup>
       ) : (
-        <Chart
-          id={`streams-ingest-rate-${streamName}`}
-          size={{ width: '100%', height: CHART_HEIGHT }}
-        >
-          <Settings
-            showLegend={showLegend}
-            legendPosition={Position.Bottom}
-            xDomain={{ min: timeState.start, max: timeState.end, minInterval }}
-            locale={i18n.getLocale()}
-            baseTheme={chartBaseTheme}
-            theme={{ barSeriesStyle: { rect: { widthRatio: 0.6 } } }}
-            onBrushEnd={onBrushEnd}
-            allowBrushingLastHistogramBin
-          />
-          <Tooltip
-            stickTo={TooltipStickTo.Top}
-            headerFormatter={({ value }) => xFormatter(value)}
-          />
-          <Axis
-            id="x-axis"
-            position={Position.Bottom}
-            showOverlappingTicks
-            tickFormat={xFormatter}
-            gridLine={{ visible: false }}
-          />
-          <Axis
-            id="y-axis"
-            ticks={3}
-            position={Position.Left}
-            tickFormat={(value) => (value === null ? '' : String(value))}
-          />
-          {allTimeseries.map((serie) => (
-            <BarSeries
-              key={serie.id}
-              id={serie.id}
-              name={
-                breakdownField
-                  ? // Strip "fieldName:" prefix for a cleaner legend label
-                    serie.label.startsWith(`${breakdownField}:`)
-                    ? serie.label.slice(`${breakdownField}:`.length)
-                    : serie.label
-                  : i18n.translate(
-                      'xpack.streams.streamOverview.timeSeriesChart.legend.ingestRate',
-                      { defaultMessage: 'Ingest rate' }
-                    )
-              }
-              color={breakdownField ? undefined : euiTheme.colors.success}
-              xScaleType={ScaleType.Time}
-              yScaleType={ScaleType.Linear}
-              xAccessor="x"
-              yAccessors={['doc_count']}
-              data={serie.data}
-              stackAccessors={breakdownField ? ['x'] : undefined}
-              enableHistogramMode
-            />
-          ))}
-        </Chart>
+        chartHeader
       )}
+      <EuiSpacer size="m" />
+
+      <EuiFlexGroup
+        alignItems="flexStart"
+        gutterSize="l"
+        responsive
+        wrap
+        data-test-subj="streamsAppStreamOverviewChartRow"
+      >
+        <EuiFlexItem grow css={chartColumnCss}>
+          {histogramResult.loading && !histogramResult.value ? (
+            <EuiFlexGroup
+              justifyContent="center"
+              alignItems="center"
+              style={{ height: CHART_HEIGHT }}
+            >
+              <EuiFlexItem grow={false}>
+                <EuiLoadingChart size="l" />
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          ) : (
+            <Chart
+              id={`streams-ingest-rate-${streamName}`}
+              size={{ width: '100%', height: CHART_HEIGHT }}
+            >
+              <Settings
+                showLegend={false}
+                legendPosition={Position.Bottom}
+                xDomain={{ min: timeState.start, max: timeState.end, minInterval }}
+                locale={i18n.getLocale()}
+                baseTheme={chartBaseTheme}
+                theme={{ barSeriesStyle: { rect: { widthRatio: 0.6 } } }}
+                onBrushEnd={onBrushEnd}
+                allowBrushingLastHistogramBin
+              />
+              <Tooltip
+                stickTo={TooltipStickTo.Top}
+                headerFormatter={({ value }) => xFormatter(value)}
+              />
+              <Axis
+                id="x-axis"
+                position={Position.Bottom}
+                showOverlappingTicks
+                tickFormat={xFormatter}
+                gridLine={{ visible: false }}
+              />
+              <Axis
+                id="y-axis"
+                ticks={3}
+                position={Position.Left}
+                tickFormat={(value) => (value === null ? '' : String(value))}
+              />
+              {allTimeseries.map((serie) => (
+                <BarSeries
+                  key={serie.id}
+                  id={serie.id}
+                  timeZone={barSeriesTimeZone}
+                  name={documentsSeriesName}
+                  color={euiTheme.colors.success}
+                  xScaleType={ScaleType.Time}
+                  yScaleType={ScaleType.Linear}
+                  xAccessor="x"
+                  yAccessors={['doc_count']}
+                  data={serie.data}
+                  enableHistogramMode
+                />
+              ))}
+            </Chart>
+          )}
+          <>
+            <EuiSpacer size="s" />
+            <EuiFlexGroup
+              gutterSize="xs"
+              alignItems="center"
+              responsive={false}
+              data-test-subj="streamsAppStreamOverviewChartLegend"
+            >
+              <EuiFlexItem grow={false}>
+                <EuiText size="xs" color="subdued">
+                  {i18n.translate(
+                    'xpack.streams.streamOverview.timeSeriesChart.rangeLegendPrefix',
+                    {
+                      defaultMessage: 'For the selected time-range',
+                    }
+                  )}
+                </EuiText>
+              </EuiFlexItem>
+              <EuiFlexItem grow={false}>
+                <span
+                  aria-hidden
+                  css={{
+                    width: euiTheme.size.s,
+                    height: euiTheme.size.s,
+                    borderRadius: '50%',
+                    backgroundColor: euiTheme.colors.success,
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }}
+                />
+              </EuiFlexItem>
+              <EuiFlexItem grow={false}>
+                <EuiText size="xs" color="subdued">
+                  {documentsSeriesName}
+                </EuiText>
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          </>
+        </EuiFlexItem>
+        {isIngestStream && statsVisible ? (
+          <ChartEmbeddedStats
+            definition={definition}
+            statsHistogramResult={histogramResult}
+            docCountInRange={docCountInRange}
+          />
+        ) : null}
+      </EuiFlexGroup>
     </EuiPanel>
   );
 }

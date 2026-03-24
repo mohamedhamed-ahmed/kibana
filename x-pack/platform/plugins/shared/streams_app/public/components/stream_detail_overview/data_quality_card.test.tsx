@@ -64,7 +64,7 @@ describe('DataQualityCard', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders Dataset quality title, indicator, and See details link for ingest stream', () => {
+  it('renders Dataset quality title, indicator, and View all link for ingest stream', () => {
     mockUseStreamDetail.mockReturnValue({
       definition: createMockWiredStreamDefinition(),
     });
@@ -72,7 +72,7 @@ describe('DataQualityCard', () => {
     renderWithI18n(<DataQualityCard />);
 
     expect(screen.getByText('Dataset quality')).toBeInTheDocument();
-    expect(screen.getByText('See details')).toBeInTheDocument();
+    expect(screen.getByText('View all')).toBeInTheDocument();
   });
 
   it('shows FailedDocsNoPrivilege when read_failure_store is false', () => {

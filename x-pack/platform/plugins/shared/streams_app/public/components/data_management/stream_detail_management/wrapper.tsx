@@ -15,7 +15,10 @@ import useAsync from 'react-use/lib/useAsync';
 import { useKibana } from '../../../hooks/use_kibana';
 import { useStreamDetail } from '../../../hooks/use_stream_detail';
 import { useStreamsAppRouter } from '../../../hooks/use_streams_app_router';
-import { useStreamDocCountsFetch } from '../../../hooks/use_streams_doc_counts_fetch';
+import {
+  STREAMS_HISTOGRAM_NUM_DATA_POINTS,
+  useStreamDocCountsFetch,
+} from '../../../hooks/use_streams_doc_counts_fetch';
 import { useTimeRange } from '../../../hooks/use_time_range';
 import { calculateDataQuality } from '../../../util/calculate_data_quality';
 import { FeedbackButton } from '../../feedback_button';
@@ -23,7 +26,6 @@ import {
   ClassicStreamBadge,
   DiscoverBadgeButton,
   LifecycleBadge,
-  SignalTypeBadge,
   TimeSeriesBadge,
   WiredStreamBadge,
 } from '../../stream_badges';
@@ -100,7 +102,7 @@ export function Wrapper({
     canReadFailureStore: Streams.ingest.all.GetResponse.is(definition)
       ? definition.privileges.read_failure_store
       : true,
-    numDataPoints: 25,
+    numDataPoints: STREAMS_HISTOGRAM_NUM_DATA_POINTS,
   });
   const docCountsFetch = getStreamDocCounts(streamId);
 
@@ -132,7 +134,6 @@ export function Wrapper({
     streamBadges.push({ key: 'wired', node: <WiredStreamBadge /> });
   }
   if (Streams.ingest.all.GetResponse.is(definition)) {
-    streamBadges.push({ key: 'signal', node: <SignalTypeBadge streamName={streamId} /> });
     if (definition.index_mode === 'time_series') {
       streamBadges.push({ key: 'timeSeries', node: <TimeSeriesBadge /> });
     }
