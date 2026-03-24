@@ -14,15 +14,24 @@ import type { AsyncState } from 'react-use/lib/useAsync';
 import { formatBytes } from '../data_management/stream_detail_lifecycle/helpers/format_bytes';
 import { executeEsqlQuery } from '../../hooks/use_execute_esql_query';
 
-/** Primary doc-count value for the chart histogram time range (loading / error → em dash). */
 export function histogramRangeDocCountTitle(
   histogramResult: AsyncState<ESQLSearchResponse>,
   docCountInRange: number
 ): string {
-  if (histogramResult.loading || histogramResult.error) {
+  if (histogramResult.error) {
+    return '—';
+  }
+  if (histogramResult.loading && histogramResult.value === undefined) {
     return '—';
   }
   return formatNumber(docCountInRange, '0a');
+}
+
+/** Skeleton state for the embedded doc-count stat (aligned with `histogramRangeDocCountTitle`). */
+export function histogramDocCountStatIsLoading(
+  histogramResult: AsyncState<ESQLSearchResponse>
+): boolean {
+  return histogramResult.loading && histogramResult.value === undefined;
 }
 
 export function chartEmbeddedDocCountDescription(): string {

@@ -7,7 +7,7 @@
 
 import { EuiFlexGroup, EuiFlexItem, useEuiTheme } from '@elastic/eui';
 import type { ESQLSearchResponse } from '@kbn/es-types';
-import type { Streams } from '@kbn/streams-schema';
+import { Streams } from '@kbn/streams-schema';
 import React, { type ReactNode } from 'react';
 import type { AsyncState } from 'react-use/lib/useAsync';
 import { useDataStreamStats } from '../data_management/stream_detail_lifecycle/hooks/use_data_stream_stats';
@@ -23,6 +23,7 @@ import {
   chartEmbeddedTotalDocsLine,
   chartEmbeddedTotalStorageLine,
   fetchEsqlTotalDocCount,
+  histogramDocCountStatIsLoading,
   histogramRangeDocCountTitle,
 } from './chart_embedded_stats_helpers';
 
@@ -61,7 +62,7 @@ function DocCountStatRow({
       description={chartEmbeddedDocCountDescription()}
       rangeTitle={histogramRangeDocCountTitle(statsHistogramResult, docCountInRange)}
       totalLine={totalLine}
-      isLoading={statsHistogramResult.loading}
+      isLoading={histogramDocCountStatIsLoading(statsHistogramResult)}
       dataTestSubj="streamsOverviewDocCount"
     />
   );
@@ -108,6 +109,38 @@ export function ChartEmbeddedQueryDocStats({
         totalLine={totalDocsLine}
       />
     </ChartStatsAside>
+  );
+}
+
+/**
+ * Routes to ingest (doc + storage) or query (doc + ES|QL total) embedded stats beside the chart.
+ */
+export function ChartEmbeddedSideStats({
+  definition,
+  esqlSource,
+  statsHistogramResult,
+  docCountInRange,
+}: {
+  definition: Streams.all.GetResponse;
+  esqlSource: string;
+  statsHistogramResult: AsyncState<ESQLSearchResponse>;
+  docCountInRange: number;
+}) {
+  if (Streams.ingest.all.GetResponse.is(definition)) {
+    return (
+      <ChartEmbeddedStats
+        definition={definition}
+        statsHistogramResult={statsHistogramResult}
+        docCountInRange={docCountInRange}
+      />
+    );
+  }
+  return (
+    <ChartEmbeddedQueryDocStats
+      esqlSource={esqlSource}
+      statsHistogramResult={statsHistogramResult}
+      docCountInRange={docCountInRange}
+    />
   );
 }
 

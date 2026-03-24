@@ -45,7 +45,7 @@ import {
 import { useTimefilter } from '../../hooks/use_timefilter';
 import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
 import { esqlResultToTimeseries } from '../../util/esql_result_to_timeseries';
-import { ChartEmbeddedQueryDocStats, ChartEmbeddedStats } from './chart_embedded_stats';
+import { ChartEmbeddedSideStats } from './chart_embedded_stats';
 
 const CHART_HEIGHT = 150;
 
@@ -80,7 +80,6 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
     : false;
   const streamName = definition.stream.name;
   const isQueryStream = Streams.QueryStream.GetResponse.is(definition);
-  const isIngestStream = Streams.ingest.all.GetResponse.is(definition);
 
   const esqlSource = isQueryStream ? definition.stream.query.view : streamName;
 
@@ -193,71 +192,72 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
         data-test-subj="streamsAppStreamOverviewChartRow"
       >
         <EuiFlexItem grow css={chartColumnCss}>
-          {histogramResult.loading && !histogramResult.value ? (
-            <EuiFlexGroup
-              justifyContent="center"
-              alignItems="center"
-              style={{ height: CHART_HEIGHT }}
-            >
-              <EuiFlexItem grow={false}>
-                <EuiLoadingChart size="l" />
-              </EuiFlexItem>
-            </EuiFlexGroup>
-          ) : (
-            <Chart
-              id={`streams-ingest-rate-${streamName}`}
-              size={{ width: '100%', height: CHART_HEIGHT }}
-            >
-              <Settings
-                showLegend={false}
-                legendPosition={Position.Bottom}
-                xDomain={{ min: timeState.start, max: timeState.end, minInterval }}
-                locale={i18n.getLocale()}
-                baseTheme={chartBaseTheme}
-                theme={{ barSeriesStyle: { rect: { widthRatio: 0.6 } } }}
-                onBrushEnd={onBrushEnd}
-                allowBrushingLastHistogramBin
-              />
-              <Tooltip
-                stickTo={TooltipStickTo.Top}
-                headerFormatter={({ value }) => xFormatter(value)}
-              />
-              <Axis
-                id="x-axis"
-                position={Position.Bottom}
-                showOverlappingTicks
-                tickFormat={xFormatter}
-                gridLine={{ visible: false }}
-              />
-              <Axis
-                id="y-axis"
-                ticks={3}
-                position={Position.Left}
-                tickFormat={(value) => (value === null ? '' : String(value))}
-              />
-              {allTimeseries.map((serie) => (
-                <BarSeries
-                  key={serie.id}
-                  id={serie.id}
-                  timeZone={barSeriesTimeZone}
-                  name={documentsSeriesName}
-                  color={euiTheme.colors.success}
-                  xScaleType={ScaleType.Time}
-                  yScaleType={ScaleType.Linear}
-                  xAccessor="x"
-                  yAccessors={['doc_count']}
-                  data={serie.data}
-                  enableHistogramMode
+          <div data-test-subj="streamsAppStreamOverviewChartPlotColumn">
+            {histogramResult.loading && !histogramResult.value ? (
+              <EuiFlexGroup
+                justifyContent="center"
+                alignItems="center"
+                style={{ height: CHART_HEIGHT }}
+              >
+                <EuiFlexItem grow={false}>
+                  <EuiLoadingChart size="l" />
+                </EuiFlexItem>
+              </EuiFlexGroup>
+            ) : (
+              <Chart
+                id={`streams-ingest-rate-${streamName}`}
+                size={{ width: '100%', height: CHART_HEIGHT }}
+              >
+                <Settings
+                  showLegend={false}
+                  legendPosition={Position.Bottom}
+                  xDomain={{ min: timeState.start, max: timeState.end, minInterval }}
+                  locale={i18n.getLocale()}
+                  baseTheme={chartBaseTheme}
+                  theme={{ barSeriesStyle: { rect: { widthRatio: 0.6 } } }}
+                  onBrushEnd={onBrushEnd}
+                  allowBrushingLastHistogramBin
                 />
-              ))}
-            </Chart>
-          )}
-          <>
+                <Tooltip
+                  stickTo={TooltipStickTo.Top}
+                  headerFormatter={({ value }) => xFormatter(value)}
+                />
+                <Axis
+                  id="x-axis"
+                  position={Position.Bottom}
+                  showOverlappingTicks
+                  tickFormat={xFormatter}
+                  gridLine={{ visible: false }}
+                />
+                <Axis
+                  id="y-axis"
+                  ticks={3}
+                  position={Position.Left}
+                  tickFormat={(value) => (value === null ? '' : String(value))}
+                />
+                {allTimeseries.map((serie) => (
+                  <BarSeries
+                    key={serie.id}
+                    id={serie.id}
+                    timeZone={barSeriesTimeZone}
+                    name={documentsSeriesName}
+                    color={euiTheme.colors.success}
+                    xScaleType={ScaleType.Time}
+                    yScaleType={ScaleType.Linear}
+                    xAccessor="x"
+                    yAccessors={['doc_count']}
+                    data={serie.data}
+                    enableHistogramMode
+                  />
+                ))}
+              </Chart>
+            )}
             <EuiSpacer size="s" />
             <EuiFlexGroup
               gutterSize="xs"
               alignItems="center"
               responsive={false}
+              wrap={false}
               data-test-subj="streamsAppStreamOverviewChartLegend"
             >
               <EuiFlexItem grow={false}>
@@ -289,21 +289,14 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
                 </EuiText>
               </EuiFlexItem>
             </EuiFlexGroup>
-          </>
+          </div>
         </EuiFlexItem>
-        {isIngestStream ? (
-          <ChartEmbeddedStats
-            definition={definition}
-            statsHistogramResult={histogramResult}
-            docCountInRange={docCountInRange}
-          />
-        ) : (
-          <ChartEmbeddedQueryDocStats
-            esqlSource={esqlSource}
-            statsHistogramResult={histogramResult}
-            docCountInRange={docCountInRange}
-          />
-        )}
+        <ChartEmbeddedSideStats
+          definition={definition}
+          esqlSource={esqlSource}
+          statsHistogramResult={histogramResult}
+          docCountInRange={docCountInRange}
+        />
       </EuiFlexGroup>
     </EuiPanel>
   );
