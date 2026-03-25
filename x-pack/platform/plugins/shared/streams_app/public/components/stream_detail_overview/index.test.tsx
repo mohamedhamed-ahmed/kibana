@@ -15,24 +15,13 @@ import {
 } from '../data_management/shared/mocks';
 
 const mockUseStreamDetail = jest.fn();
-const mockUseTimeRange = jest.fn();
-const mockUseTimeRangeUpdate = jest.fn();
-const mockUseTimefilter = jest.fn();
 
 jest.mock('../../hooks/use_stream_detail', () => ({
   useStreamDetail: () => mockUseStreamDetail(),
 }));
 
-jest.mock('../../hooks/use_time_range', () => ({
-  useTimeRange: () => mockUseTimeRange(),
-}));
-
-jest.mock('../../hooks/use_time_range_update', () => ({
-  useTimeRangeUpdate: () => mockUseTimeRangeUpdate(),
-}));
-
-jest.mock('../../hooks/use_timefilter', () => ({
-  useTimefilter: () => mockUseTimefilter(),
+jest.mock('./overview_time_filter', () => ({
+  OverviewTimeFilter: () => <div data-test-subj="mockOverviewTimeFilter">Time filter</div>,
 }));
 
 jest.mock('./data_quality_card', () => ({
@@ -52,9 +41,6 @@ const renderWithI18n = (ui: React.ReactElement) => render(<I18nProvider>{ui}</I1
 describe('StreamOverview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTimeRange.mockReturnValue({ rangeFrom: 'now-15m', rangeTo: 'now' });
-    mockUseTimeRangeUpdate.mockReturnValue({ updateTimeRange: jest.fn() });
-    mockUseTimefilter.mockReturnValue({ refresh: jest.fn() });
   });
 
   it('renders about panel in sidebar', () => {
@@ -65,6 +51,7 @@ describe('StreamOverview', () => {
     renderWithI18n(<StreamOverview />);
 
     expect(screen.getByText('About this stream')).toBeInTheDocument();
+    expect(screen.getByTestId('mockOverviewTimeFilter')).toBeInTheDocument();
   });
 
   it('renders chart and dataset quality card only for ingest stream', () => {

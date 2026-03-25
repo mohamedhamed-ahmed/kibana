@@ -23,9 +23,15 @@ import React, { useMemo } from 'react';
 import { useStreamDetail } from '../../hooks/use_stream_detail';
 import { useStreamsAppFetch } from '../../hooks/use_streams_app_fetch';
 import { useStreamsAppRouter } from '../../hooks/use_streams_app_router';
+import { useTimeRange } from '../../hooks/use_time_range';
 import { useKibana } from '../../hooks/use_kibana';
 import { executeEsqlQuery } from '../../hooks/use_execute_esql_query';
 import { calculateDataQuality } from '../../util/calculate_data_quality';
+import {
+  buildDataQualityDegradedDocCountEsql,
+  buildDataQualityIgnoredFieldsCountEsql,
+  buildDataQualityTotalDocCountEsql,
+} from '../../util/stream_overview_esql';
 import { OverviewStat } from './overview_stat';
 
 function FailedDocsNoPrivilege() {
@@ -66,6 +72,7 @@ export function DataQualityCard() {
 
 function DataQualityCardContent({ definition }: { definition: Streams.ingest.all.GetResponse }) {
   const router = useStreamsAppRouter();
+  const { rangeFrom, rangeTo } = useTimeRange();
   const {
     dependencies: {
       start: {
@@ -86,12 +93,13 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   // Includes ::failures when the user has read_failure_store privilege
   const totalDocsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
+      if (!ts) return 0;
       const response = await executeEsqlQuery({
-        query: `FROM ${dataSourceForTimeRange} | STATS doc_count = COUNT(*)`,
+        query: buildDataQualityTotalDocCountEsql(dataSourceForTimeRange),
         search: data.search.search,
         signal,
-        start: ts!.start,
-        end: ts!.end,
+        start: ts.start,
+        end: ts.end,
       });
       const colIdx = response.columns.findIndex((c) => c.name === 'doc_count');
       return colIdx !== -1 ? (response.values[0]?.[colIdx] as number) ?? 0 : 0;
@@ -105,12 +113,13 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   // the latest backing index — mixing it with a time-filtered total produced >100% percentages.)
   const degradedDocsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
+      if (!ts) return 0;
       const response = await executeEsqlQuery({
-        query: `FROM ${dataSourceForTimeRange} METADATA _ignored | WHERE _ignored IS NOT NULL | STATS degraded_doc_count = COUNT(*)`,
+        query: buildDataQualityDegradedDocCountEsql(dataSourceForTimeRange),
         search: data.search.search,
         signal,
-        start: ts!.start,
-        end: ts!.end,
+        start: ts.start,
+        end: ts.end,
       });
       const colIdx = response.columns.findIndex((c) => c.name === 'degraded_doc_count');
       return colIdx !== -1 ? (response.values[0]?.[colIdx] as number) ?? 0 : 0;
@@ -124,11 +133,12 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   const failedDocsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
       if (!canReadFailureStore) return 0;
+      if (!ts) return 0;
       const result = await streamsRepositoryClient.fetch(
         'GET /internal/streams/doc_counts/failed',
         {
           signal,
-          params: { query: { stream: streamName, start: ts!.start, end: ts!.end } },
+          params: { query: { stream: streamName, start: ts.start, end: ts.end } },
         }
       );
       return result.find((d) => d.stream === streamName)?.count ?? 0;
@@ -140,12 +150,13 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   // Unique ignored field names: COUNT_DISTINCT(_ignored) over the current time range.
   const ignoredFieldsResult = useStreamsAppFetch(
     async ({ signal, timeState: ts }) => {
+      if (!ts) return 0;
       const response = await executeEsqlQuery({
-        query: `FROM ${dataSourceForTimeRange} METADATA _ignored | WHERE _ignored IS NOT NULL | STATS ignored_fields_count = COUNT_DISTINCT(_ignored)`,
+        query: buildDataQualityIgnoredFieldsCountEsql(dataSourceForTimeRange),
         search: data.search.search,
         signal,
-        start: ts!.start,
-        end: ts!.end,
+        start: ts.start,
+        end: ts.end,
       });
       const countCol = response.columns.findIndex((c) => c.name === 'ignored_fields_count');
       return countCol !== -1 ? (response.values[0]?.[countCol] as number) ?? 0 : 0;
@@ -176,9 +187,15 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
   const isQualityLoading =
     totalDocsResult.loading || degradedDocsResult.loading || failedDocsResult.loading;
 
-  const dataQualityTabHref = router.link('/{key}/management/{tab}', {
-    path: { key: streamName, tab: 'dataQuality' },
-  });
+  const dataQualityManagementLinkArgs = [
+    '/{key}/management/{tab}',
+    {
+      path: { key: streamName, tab: 'dataQuality' as const },
+      query: { rangeFrom, rangeTo },
+    },
+  ] as const;
+
+  const dataQualityTabHref = router.link(...dataQualityManagementLinkArgs);
 
   const formatPct = (value: number) => `${formatNumber(value, '0.[00]')}%`;
 
@@ -204,11 +221,21 @@ function DataQualityCardContent({ definition }: { definition: Streams.ingest.all
         </EuiFlexItem>
         <EuiFlexItem />
         <EuiFlexItem grow={false}>
-          <EuiLink href={dataQualityTabHref} data-test-subj="streamsOverviewDataQualityLink">
-            {i18n.translate('xpack.streams.streamOverview.dataQualityCard.viewAll', {
-              defaultMessage: 'View all',
-            })}
-          </EuiLink>
+          {
+            // eslint-disable-next-line @elastic/eui/href-or-on-click -- client-side navigation via router.push; href for a11y / new tab
+            <EuiLink
+              href={dataQualityTabHref}
+              data-test-subj="streamsOverviewDataQualityLink"
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                router.push(...dataQualityManagementLinkArgs);
+              }}
+            >
+              {i18n.translate('xpack.streams.streamOverview.dataQualityCard.viewAll', {
+                defaultMessage: 'View all',
+              })}
+            </EuiLink>
+          }
         </EuiFlexItem>
       </EuiFlexGroup>
 

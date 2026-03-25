@@ -95,7 +95,7 @@ function IngestRateChartContent({ definition }: { definition: Streams.all.GetRes
     numDataPoints: STREAMS_HISTOGRAM_NUM_DATA_POINTS,
   });
 
-  const histogramFetch = getStreamHistogram(esqlSource, undefined);
+  const histogramFetch = getStreamHistogram(esqlSource);
   const histogramResult = useAsync(() => histogramFetch, [histogramFetch]);
 
   const allTimeseries = useMemo(

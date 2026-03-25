@@ -5,43 +5,19 @@
  * 2.0.
  */
 
-import {
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiSuperDatePicker,
-  useIsWithinBreakpoints,
-} from '@elastic/eui';
+import { EuiFlexGroup, EuiFlexItem, useIsWithinBreakpoints } from '@elastic/eui';
 import { Streams } from '@kbn/streams-schema';
 import React, { type CSSProperties, type ReactNode, useMemo } from 'react';
 import { useStreamDetail } from '../../hooks/use_stream_detail';
-import { useTimeRange } from '../../hooks/use_time_range';
-import { useTimeRangeUpdate } from '../../hooks/use_time_range_update';
-import { useTimefilter } from '../../hooks/use_timefilter';
 import { AboutPanel } from './about_panel';
 import { DataQualityCard } from './data_quality_card';
 import { IngestRateChart } from './ingest_rate_chart';
+import { OverviewTimeFilter } from './overview_time_filter';
 
 interface OverviewSection {
   id: string;
   node: ReactNode;
   show: boolean;
-}
-
-function OverviewTimeFilter() {
-  const { rangeFrom, rangeTo } = useTimeRange();
-  const { updateTimeRange } = useTimeRangeUpdate();
-  const { refresh } = useTimefilter();
-
-  return (
-    <EuiSuperDatePicker
-      start={rangeFrom}
-      end={rangeTo}
-      onTimeChange={({ start, end }) => updateTimeRange({ from: start, to: end })}
-      onRefresh={() => refresh()}
-      width="full"
-      showUpdateButton="iconOnly"
-    />
-  );
 }
 
 export function StreamOverview() {

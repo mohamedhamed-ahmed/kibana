@@ -29,7 +29,12 @@ jest.mock('../../hooks/use_streams_app_router', () => ({
   useStreamsAppRouter: () => ({
     link: (_path: string, params: { path: { key: string; tab: string } }) =>
       `/streams/${params.path.key}/management/${params.path.tab}`,
+    push: jest.fn(),
   }),
+}));
+
+jest.mock('../../hooks/use_time_range', () => ({
+  useTimeRange: () => ({ rangeFrom: 'now-15m', rangeTo: 'now' }),
 }));
 
 jest.mock('../../hooks/use_kibana', () => ({

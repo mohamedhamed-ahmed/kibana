@@ -12,9 +12,8 @@ import type { StreamDocsStat } from '@kbn/streams-plugin/common';
 import type { UnparsedEsqlResponse } from '@kbn/traced-es-client';
 import { useKibana } from './use_kibana';
 import { useTimefilter } from './use_timefilter';
+import { buildStreamIngestHistogramEsql } from '../util/stream_overview_esql';
 import { executeEsqlQuery } from './use_execute_esql_query';
-
-const HISTOGRAM_BREAKDOWN_LIMIT = 10_000;
 
 /**
  * Default bucket count for ES|QL time histograms (`BUCKET(@timestamp, …)`). Use the same value
@@ -40,7 +39,7 @@ export function useStreamDocCountsFetch({
   numDataPoints,
 }: UseDocCountFetchProps): {
   getStreamDocCounts(streamName?: string): StreamDocCountsFetch;
-  getStreamHistogram(streamName: string, breakdownField?: string): Promise<UnparsedEsqlResponse>;
+  getStreamHistogram(streamName: string): Promise<UnparsedEsqlResponse>;
 } {
   const { timeState, timeState$ } = useTimefilter();
   const {
@@ -156,10 +155,8 @@ export function useStreamDocCountsFetch({
 
       return docCountsFetch;
     },
-    getStreamHistogram(streamName: string, breakdownField?: string): Promise<UnparsedEsqlResponse> {
-      const cacheKey = `${streamName}::${breakdownField ?? ''}::${timeState.start}::${
-        timeState.end
-      }`;
+    getStreamHistogram(streamName: string): Promise<UnparsedEsqlResponse> {
+      const cacheKey = `${streamName}::${timeState.start}::${timeState.end}`;
       const cachedPromise = histogramPromiseCache.current[cacheKey];
       if (cachedPromise) {
         return cachedPromise;
@@ -174,11 +171,8 @@ export function useStreamDocCountsFetch({
       const source = canReadFailureStore ? `${streamName},${streamName}::failures` : streamName;
       const timezone = uiSettings?.get<'Browser' | string>(UI_SETTINGS.DATEFORMAT_TZ);
 
-      const breakdownClause = breakdownField ? `, \`${breakdownField}\`` : '';
-      const limitClause = breakdownField ? ` | LIMIT ${HISTOGRAM_BREAKDOWN_LIMIT}` : '';
-
       const histogramPromise = executeEsqlQuery({
-        query: `FROM ${source} | STATS doc_count = COUNT(*) BY @timestamp = BUCKET(@timestamp, ${minInterval} ms)${breakdownClause}${limitClause}`,
+        query: buildStreamIngestHistogramEsql(source, minInterval),
         search: data.search.search,
         timezone,
         signal: abortController.signal,
