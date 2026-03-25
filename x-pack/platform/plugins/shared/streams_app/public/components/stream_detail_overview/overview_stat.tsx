@@ -39,7 +39,7 @@ export function OverviewStat({
 }) {
   return (
     <EuiStat
-      title={isLoading ? '—' : <span>{title}</span>}
+      title={title}
       description={
         <EuiText size="s" color="subdued">
           {description}
