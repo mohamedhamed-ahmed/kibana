@@ -61,6 +61,8 @@ export function QueryStreamDetailManagement({
     features: { attachments, overviewPage },
   } = useStreamsPrivileges();
 
+  const { euiTheme } = useEuiTheme();
+
   const { significantEvents } = useStreamsDetailManagementTabs({
     definition,
     refreshDefinition,
