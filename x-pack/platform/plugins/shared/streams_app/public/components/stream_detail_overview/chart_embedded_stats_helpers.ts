@@ -13,6 +13,7 @@ import type { AsyncState } from 'react-use/lib/useAsync';
 
 import { formatBytes } from '../data_management/stream_detail_lifecycle/helpers/format_bytes';
 import { executeEsqlQuery } from '../../hooks/use_execute_esql_query';
+import { buildDataQualityTotalDocCountEsql } from '../../util/stream_overview_esql';
 
 export function histogramRangeDocCountTitle(
   histogramResult: AsyncState<ESQLSearchResponse>,
@@ -72,7 +73,7 @@ export async function fetchEsqlTotalDocCount(
   signal: AbortSignal
 ): Promise<number> {
   const response = await executeEsqlQuery({
-    query: `FROM ${esqlSource} | STATS doc_count = COUNT(*)`,
+    query: buildDataQualityTotalDocCountEsql(esqlSource),
     search,
     signal,
   });

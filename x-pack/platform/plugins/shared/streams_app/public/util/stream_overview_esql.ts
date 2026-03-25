@@ -5,116 +5,29 @@
  * 2.0.
  */
 
-import { BasicPrettyPrinter, Builder } from '@elastic/esql';
+import { esql } from '@elastic/esql';
 
-function fromWithIgnoredMetadata(source: string) {
-  return Builder.command({
-    name: 'from',
-    args: [
-      Builder.expression.source.index(source),
-      Builder.option({
-        name: 'METADATA',
-        args: [Builder.expression.column({ args: [Builder.identifier({ name: '_ignored' })] })],
-      }),
-    ],
-  });
-}
-
-function whereIgnoredIsNotNull() {
-  return Builder.command({
-    name: 'where',
-    args: [Builder.expression.func.postfix('is not null', Builder.expression.column('_ignored'))],
-  });
-}
-
-/** Total document count for the stream (and optional ::failures) in the active time range. */
+/** Total document count in the active time range (`source` may be a stream, view, or comma-separated list). */
 export function buildDataQualityTotalDocCountEsql(source: string): string {
-  return BasicPrettyPrinter.print(
-    Builder.expression.query([
-      Builder.command({
-        name: 'from',
-        args: [Builder.expression.source.index(source)],
-      }),
-      Builder.command({
-        name: 'stats',
-        args: [
-          Builder.expression.func.binary('=', [
-            Builder.expression.column('doc_count'),
-            Builder.expression.func.call('COUNT', [Builder.expression.column('*')]),
-          ]),
-        ],
-      }),
-    ])
-  );
+  return esql.from(source).pipe`STATS doc_count = COUNT(*)`.print();
 }
 
 /** Degraded-doc count: rows with non-null `_ignored` in the time range. */
 export function buildDataQualityDegradedDocCountEsql(source: string): string {
-  return BasicPrettyPrinter.print(
-    Builder.expression.query([
-      fromWithIgnoredMetadata(source),
-      whereIgnoredIsNotNull(),
-      Builder.command({
-        name: 'stats',
-        args: [
-          Builder.expression.func.binary('=', [
-            Builder.expression.column('degraded_doc_count'),
-            Builder.expression.func.call('COUNT', [Builder.expression.column('*')]),
-          ]),
-        ],
-      }),
-    ])
-  );
+  return esql.from([source], ['_ignored']).pipe`WHERE _ignored IS NOT NULL`
+    .pipe`STATS degraded_doc_count = COUNT(*)`.print();
 }
 
 /** Distinct ignored-field values count in the time range. */
 export function buildDataQualityIgnoredFieldsCountEsql(source: string): string {
-  return BasicPrettyPrinter.print(
-    Builder.expression.query([
-      fromWithIgnoredMetadata(source),
-      whereIgnoredIsNotNull(),
-      Builder.command({
-        name: 'stats',
-        args: [
-          Builder.expression.func.binary('=', [
-            Builder.expression.column('ignored_fields_count'),
-            Builder.expression.func.call('COUNT_DISTINCT', [Builder.expression.column('_ignored')]),
-          ]),
-        ],
-      }),
-    ])
-  );
+  return esql.from([source], ['_ignored']).pipe`WHERE _ignored IS NOT NULL`
+    .pipe`STATS ignored_fields_count = COUNT_DISTINCT(_ignored)`.print('basic');
 }
 
-/** Ingest histogram: doc_count by @timestamp bucket. */
+/** Ingest histogram: doc_count by @timestamp bucket (`minIntervalMs` from time range / bucket count). */
 export function buildStreamIngestHistogramEsql(source: string, minIntervalMs: number): string {
-  return BasicPrettyPrinter.print(
-    Builder.expression.query([
-      Builder.command({
-        name: 'from',
-        args: [Builder.expression.source.index(source)],
-      }),
-      Builder.command({
-        name: 'stats',
-        args: [
-          Builder.expression.func.binary('=', [
-            Builder.expression.column('doc_count'),
-            Builder.expression.func.call('COUNT', [Builder.expression.column('*')]),
-          ]),
-          Builder.option({
-            name: 'by',
-            args: [
-              Builder.expression.func.binary('=', [
-                Builder.expression.column('@timestamp'),
-                Builder.expression.func.call('BUCKET', [
-                  Builder.expression.column('@timestamp'),
-                  Builder.expression.literal.timespan(minIntervalMs, 'ms'),
-                ]),
-              ]),
-            ],
-          }),
-        ],
-      }),
-    ])
+  return esql.from(source)
+    .pipe`STATS doc_count = COUNT(*) BY @timestamp = BUCKET(@timestamp, ${minIntervalMs} ms)`.print(
+    'basic'
   );
 }
