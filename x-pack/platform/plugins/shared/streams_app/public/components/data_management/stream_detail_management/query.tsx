@@ -7,10 +7,12 @@
 import React from 'react';
 import { i18n } from '@kbn/i18n';
 import type { Streams } from '@kbn/streams-schema';
-import { EuiFlexGroup, EuiFlexItem, EuiToolTip } from '@elastic/eui';
+import { EuiFlexGroup, EuiFlexItem, EuiPageHeader, EuiToolTip, useEuiTheme } from '@elastic/eui';
+import { css } from '@emotion/react';
 import { useStreamsAppRouter } from '../../../hooks/use_streams_app_router';
 import { useStreamsAppParams } from '../../../hooks/use_streams_app_params';
 import { useStreamsPrivileges } from '../../../hooks/use_streams_privileges';
+import { useTimeRange } from '../../../hooks/use_time_range';
 import type { ManagementTabs } from './wrapper';
 import { StreamsAppPageTemplate } from '../../streams_app_page_template';
 import { DiscoverBadgeButton, QueryStreamBadge } from '../../stream_badges';
@@ -53,19 +55,16 @@ export function QueryStreamDetailManagement({
   const {
     path: { key, tab },
   } = useStreamsAppParams('/{key}/management/{tab}');
+  const { rangeFrom, rangeTo } = useTimeRange();
 
   const {
     features: { attachments, overviewPage },
   } = useStreamsPrivileges();
 
-  const { isLoading, significantEvents } = useStreamsDetailManagementTabs({
+  const { significantEvents } = useStreamsDetailManagementTabs({
     definition,
     refreshDefinition,
   });
-
-  if (isLoading) {
-    return null;
-  }
 
   const tabs: ManagementTabs = {};
 
@@ -129,9 +128,12 @@ export function QueryStreamDetailManagement({
 
   return (
     <>
-      <StreamsAppPageTemplate.Header
+      <EuiPageHeader
         paddingSize="l"
         bottomBorder="extended"
+        css={css`
+          background: ${euiTheme.colors.backgroundBasePlain};
+        `}
         pageTitle={
           <EuiFlexGroup gutterSize="s" alignItems="center">
             {key}
@@ -147,6 +149,7 @@ export function QueryStreamDetailManagement({
           label,
           href: router.link('/{key}/management/{tab}', {
             path: { key, tab: tabKey },
+            query: { rangeFrom, rangeTo },
           }),
           isSelected: tab === tabKey,
           'data-test-subj': `queryStreamDetails-${tabKey}-tab`,
