@@ -14,7 +14,11 @@ import type {
 import type { ElasticsearchClient } from '@kbn/core/server';
 
 import { streamPartsToIndexPattern } from '../../common/utils';
-import { DEFAULT_DATASET_TYPE, FAILURE_STORE_PRIVILEGE } from '../../common/constants';
+import {
+  DEFAULT_DATASET_TYPE,
+  FAILURE_STORE_PRIVILEGE,
+  MANAGE_FAILURE_STORE_PRIVILEGE,
+} from '../../common/constants';
 
 const FAILURE_STORE_PRIVILEGES = [FAILURE_STORE_PRIVILEGE, MANAGE_FAILURE_STORE_PRIVILEGE] as const;
 
