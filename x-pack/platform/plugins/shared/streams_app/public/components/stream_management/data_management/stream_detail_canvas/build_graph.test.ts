@@ -61,6 +61,9 @@ describe('buildClassicStreamsGraph', () => {
       source: 'source-logs-nginx-default',
       target: 'destination-logs-nginx-default',
     });
+
+    // The auto-layout always places the source to the left of its destination.
+    expect(source.position.x).toBeLessThan(destination.position.x);
   });
 
   it('flags the destination as having processing when the stream has Streamlang steps', () => {
@@ -83,6 +86,25 @@ describe('buildClassicStreamsGraph', () => {
 
     const sources = nodes.filter((node) => node.type === SOURCE_NODE_TYPE);
     expect(sources[0].position.y).not.toEqual(sources[1].position.y);
+  });
+
+  it('gives every node a screen-reader aria-label', () => {
+    const { nodes } = buildClassicStreamsGraph([
+      createClassicDefinition('logs-nginx-default'),
+      createClassicDefinition('logs-with-processing', { withProcessing: true }),
+    ]);
+
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+
+    expect(byId.get('source-logs-nginx-default')?.ariaLabel).toBe(
+      'Source: logs-nginx-default, async bulk ingest'
+    );
+    expect(byId.get('destination-logs-nginx-default')?.ariaLabel).toBe(
+      'Destination: logs-nginx-default'
+    );
+    expect(byId.get('destination-logs-with-processing')?.ariaLabel).toBe(
+      'Destination: logs-with-processing, with processing'
+    );
   });
 });
 

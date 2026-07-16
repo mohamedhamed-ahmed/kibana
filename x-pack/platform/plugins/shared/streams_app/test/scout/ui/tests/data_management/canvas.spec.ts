@@ -91,6 +91,84 @@ test.describe(
       ).toBeVisible();
     });
 
+    test('renders the custom zoom and fit-to-screen controls', async ({ page }) => {
+      await expect(page.locator('[data-test-subj="streamsCanvasZoomControls"]')).toBeVisible();
+      await expect(page.locator('[data-test-subj="streamsCanvasZoomIn"]')).toBeVisible();
+      await expect(page.locator('[data-test-subj="streamsCanvasZoomOut"]')).toBeVisible();
+      await expect(page.locator('[data-test-subj="streamsCanvasFitToScreen"]')).toBeVisible();
+    });
+
+    test('renders a minimap that collapses and reopens', async ({ page }) => {
+      const minimap = page.locator('[data-test-subj="streamsCanvasMinimap"]');
+      await expect(minimap).toBeVisible();
+
+      await page.locator('[data-test-subj="streamsCanvasMinimapCollapse"]').click();
+      await expect(minimap).toHaveCount(0);
+      await expect(page.locator('[data-test-subj="streamsCanvasMinimapExpand"]')).toBeVisible();
+
+      await page.locator('[data-test-subj="streamsCanvasMinimapExpand"]').click();
+      await expect(page.locator('[data-test-subj="streamsCanvasMinimap"]')).toBeVisible();
+    });
+
+    test('tidies up the whole graph from the pane menu and enables undo', async ({ page }) => {
+      // A single node has no tidy action, so right-clicking one opens no menu.
+      const destination = page.locator('[data-test-subj="streamsCanvasDestinationNode"]', {
+        hasText: PLAIN_STREAM,
+      });
+      await destination.click({ button: 'right' });
+      await expect(page.locator('[data-test-subj="streamsCanvasContextMenu"]')).toHaveCount(0);
+
+      // Right-clicking the empty canvas offers "Tidy up" for the whole graph.
+      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 5, y: 5 } });
+
+      await expect(page.locator('[data-test-subj="streamsCanvasContextMenu"]')).toBeVisible();
+      const tidyUp = page.locator('[data-test-subj="streamsCanvasContextMenuTidyUp"]');
+      await expect(tidyUp).toBeVisible();
+
+      await tidyUp.click();
+      await expect(page.locator('[data-test-subj="streamsCanvasContextMenu"]')).toHaveCount(0);
+      // Tidying records a history step, so undo becomes available.
+      await expect(page.locator('[data-test-subj="streamsCanvasUndo"]')).toBeEnabled();
+    });
+
+    test('renders the canvas toolbar with undo/redo and add-node placeholders', async ({
+      page,
+    }) => {
+      await expect(page.locator('[data-test-subj="streamsCanvasToolbar"]')).toBeVisible();
+
+      // Undo/redo start disabled since nothing has been changed yet.
+      await expect(page.locator('[data-test-subj="streamsCanvasUndo"]')).toBeDisabled();
+      await expect(page.locator('[data-test-subj="streamsCanvasRedo"]')).toBeDisabled();
+
+      await expect(page.locator('[data-test-subj="streamsCanvasAddSource"]')).toBeVisible();
+      await expect(page.locator('[data-test-subj="streamsCanvasAddDestination"]')).toBeVisible();
+    });
+
+    test('exposes accessible node labels and keyboard controls', async ({ page }) => {
+      // Nodes carry a screen-reader label so Tab-focusing announces what they are.
+      await expect(
+        page.locator(`.react-flow__node[aria-label="Source: ${PLAIN_STREAM}, async bulk ingest"]`)
+      ).toBeVisible();
+
+      // Escape closes an open context menu.
+      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 5, y: 5 } });
+      await expect(page.locator('[data-test-subj="streamsCanvasContextMenu"]')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('[data-test-subj="streamsCanvasContextMenu"]')).toHaveCount(0);
+
+      // Tidy up records a history step; Ctrl+Z (focus inside the canvas) undoes it.
+      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 5, y: 5 } });
+      await page.locator('[data-test-subj="streamsCanvasContextMenuTidyUp"]').click();
+      await expect(page.locator('[data-test-subj="streamsCanvasUndo"]')).toBeEnabled();
+
+      const destination = page.locator('[data-test-subj="streamsCanvasDestinationNode"]', {
+        hasText: PLAIN_STREAM,
+      });
+      await destination.click();
+      await page.keyboard.press('Control+z');
+      await expect(page.locator('[data-test-subj="streamsCanvasUndo"]')).toBeDisabled();
+    });
+
     test('shows the processing glyph only on destinations with processing', async ({ page }) => {
       const processingDestination = page.locator(
         '[data-test-subj="streamsCanvasDestinationNode"]',

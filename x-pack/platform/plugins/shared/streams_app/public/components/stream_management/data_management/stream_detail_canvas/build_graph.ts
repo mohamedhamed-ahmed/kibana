@@ -5,12 +5,16 @@
  * 2.0.
  */
 
+import type { IconType } from '@elastic/eui';
+import { i18n } from '@kbn/i18n';
 import type { Streams } from '@kbn/streams-schema';
+import { layoutGraph } from './layout';
 import {
   ANIMATED_EDGE_TYPE,
   DESTINATION_NODE_TYPE,
   SOURCE_NODE_TYPE,
   type ClassicCanvasGraph,
+  type ClassicCanvasNode,
   type DestinationNodeData,
   type SourceNodeData,
 } from './types';
@@ -21,14 +25,7 @@ import {
  */
 export const BULK_SOURCE_SUBTITLE = '_bulk';
 
-const SOURCE_ICON_TYPE = 'push';
-
-// Static layout: one source -> destination row per stream. Kept intentionally
-// simple since this ticket renders a flat list of pairs for now.
-const ROW_HEIGHT = 120;
-const ROW_Y_OFFSET = 24;
-const SOURCE_X = 0;
-const DESTINATION_X = 360;
+const SOURCE_ICON_TYPE: IconType = 'push';
 
 /** A classic stream has processing when it carries at least one Streamlang step. */
 export const hasProcessing = (definition: Streams.ClassicStream.Definition): boolean =>
@@ -45,29 +42,48 @@ const buildDestination = (definition: Streams.ClassicStream.Definition): Destina
   hasProcessing: hasProcessing(definition),
 });
 
+/** Accessible name announced when a source node receives keyboard focus. */
+export const getSourceAriaLabel = (definition: Streams.ClassicStream.Definition): string =>
+  i18n.translate('xpack.streams.canvas.sourceNode.ariaLabel', {
+    defaultMessage: 'Source: {name}, async bulk ingest',
+    values: { name: definition.name },
+  });
+
+/** Accessible name announced when a destination node receives keyboard focus. */
+export const getDestinationAriaLabel = (definition: Streams.ClassicStream.Definition): string =>
+  hasProcessing(definition)
+    ? i18n.translate('xpack.streams.canvas.destinationNode.ariaLabelWithProcessing', {
+        defaultMessage: 'Destination: {name}, with processing',
+        values: { name: definition.name },
+      })
+    : i18n.translate('xpack.streams.canvas.destinationNode.ariaLabel', {
+        defaultMessage: 'Destination: {name}',
+        values: { name: definition.name },
+      });
+
 export const buildClassicStreamsGraph = (
   streams: Streams.ClassicStream.Definition[]
 ): ClassicCanvasGraph => {
-  const nodes: ClassicCanvasGraph['nodes'] = [];
+  const nodes: ClassicCanvasNode[] = [];
   const edges: ClassicCanvasGraph['edges'] = [];
 
-  // The position calculations will change later on when we start saving the graph layout.
-  streams.forEach((definition, index) => {
-    const y = ROW_Y_OFFSET + index * ROW_HEIGHT;
+  streams.forEach((definition) => {
     const sourceId = `source-${definition.name}`;
     const destinationId = `destination-${definition.name}`;
 
     nodes.push({
       id: sourceId,
       type: SOURCE_NODE_TYPE,
-      position: { x: SOURCE_X, y },
+      position: { x: 0, y: 0 },
+      ariaLabel: getSourceAriaLabel(definition),
       data: inferSource(definition),
     });
 
     nodes.push({
       id: destinationId,
       type: DESTINATION_NODE_TYPE,
-      position: { x: DESTINATION_X, y },
+      position: { x: 0, y: 0 },
+      ariaLabel: getDestinationAriaLabel(definition),
       data: buildDestination(definition),
     });
 
@@ -79,5 +95,13 @@ export const buildClassicStreamsGraph = (
     });
   });
 
-  return { nodes, edges };
+  // Positions come from the shared auto-layout so the placement logic stays in
+  // one place and extends to richer topologies (pipelines, routing) later.
+  const positions = layoutGraph(nodes, edges);
+  const positionedNodes = nodes.map((node) => ({
+    ...node,
+    position: positions.get(node.id) ?? node.position,
+  })) as ClassicCanvasNode[];
+
+  return { nodes: positionedNodes, edges };
 };

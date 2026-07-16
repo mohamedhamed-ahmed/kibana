@@ -10,9 +10,8 @@ import { css } from '@emotion/react';
 import { EuiFlexGroup, EuiFlexItem, EuiIcon, EuiPanel, EuiText, useEuiTheme } from '@elastic/eui';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { SourceNode as SourceNodeType } from '../types';
+import { SOURCE_NODE_WIDTH } from '../canvas_constants';
 import { getNodeCardStyles } from './node_card_styles';
-
-const SOURCE_NODE_WIDTH = 207;
 
 export function SourceNode({ data, selected, dragging }: NodeProps<SourceNodeType>) {
   const { euiTheme } = useEuiTheme();
