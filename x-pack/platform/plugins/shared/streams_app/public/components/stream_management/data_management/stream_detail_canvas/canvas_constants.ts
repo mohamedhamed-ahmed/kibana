@@ -14,14 +14,11 @@
  */
 export const GRID_SIZE = 16;
 
-/** Horizontal distance between successive layout columns (px). */
+/** Center-to-center horizontal distance between successive layout columns (px). */
 export const COLUMN_GAP = 360;
 
-/** Vertical distance between successive rows within the canvas (px). */
+/** Center-to-center vertical distance between successive rows within the canvas (px). */
 export const ROW_GAP = 120;
-
-/** Vertical gap inserted between independent flows/components (px). */
-export const COMPONENT_GAP = 48;
 
 /** Viewport zoom bounds for the canvas. */
 export const MIN_ZOOM = 0.4;

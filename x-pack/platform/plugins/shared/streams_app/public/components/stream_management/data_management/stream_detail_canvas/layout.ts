@@ -5,8 +5,9 @@
  * 2.0.
  */
 
+import Dagre from '@dagrejs/dagre';
 import type { XYPosition } from '@xyflow/react';
-import { COLUMN_GAP, COMPONENT_GAP, ROW_GAP } from './canvas_constants';
+import { COLUMN_GAP, NODE_HEIGHT_ESTIMATE, NODE_WIDTH_ESTIMATE, ROW_GAP } from './canvas_constants';
 
 interface LayoutNode {
   id: string;
@@ -17,18 +18,22 @@ interface LayoutEdge {
   target: string;
 }
 
+// Dagre spaces nodes edge-to-edge, so translate the design's center-to-center
+// column/row gaps into the separation dagre expects. A uniform node footprint
+// keeps the flow on the same tidy grid regardless of each card's real width.
+const RANK_SEPARATION = Math.max(COLUMN_GAP - NODE_WIDTH_ESTIMATE, 0);
+const NODE_SEPARATION = Math.max(ROW_GAP - NODE_HEIGHT_ESTIMATE, 0);
+
 /**
- * Deterministic, dependency-free left-to-right layered layout.
- *
- * Data flows left -> right, so each node's column is its longest-path depth from
- * a root (a node with no incoming edges). Independent flows (connected
- * components) are stacked top-to-bottom in their own bands so unrelated flows
- * never interleave.
+ * Dagre assigns each node to a rank by its depth in the flow and minimizes edge
+ * crossings within each rank, so richer topologies (pipelines, routing, fan-out)
+ * lay out cleanly without any bespoke graph code here. Independent flows are
+ * stacked vertically. Positions are normalized so the graph's top-left sits at
+ * the origin, and returned as React Flow top-left coordinates.
  *
  * For the current classic topology (one source -> destination pair per stream)
- * this reduces to source in column 0, destination in column 1, one component per
- * row. It generalizes cleanly to pipeline/routing columns once the API provides
- * them, without changing callers.
+ * this still yields source in column 0, destination in column 1, one pair per
+ * row.
  */
 export const layoutGraph = (nodes: LayoutNode[], edges: LayoutEdge[]): Map<string, XYPosition> => {
   const positions = new Map<string, XYPosition>();
@@ -36,111 +41,56 @@ export const layoutGraph = (nodes: LayoutNode[], edges: LayoutEdge[]): Map<strin
     return positions;
   }
 
+  const graph = new Dagre.graphlib.Graph({ directed: true, compound: false })
+    .setGraph({
+      rankdir: 'LR',
+      ranksep: RANK_SEPARATION,
+      nodesep: NODE_SEPARATION,
+      marginx: 0,
+      marginy: 0,
+    })
+    .setDefaultEdgeLabel(() => ({}));
+
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const validEdges = edges.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target));
-
-  const outgoing = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
-  const incoming = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
-  const undirected = new Map<string, Set<string>>(nodes.map((node) => [node.id, new Set()]));
-
-  validEdges.forEach(({ source, target }) => {
-    outgoing.get(source)!.push(target);
-    incoming.get(target)!.push(source);
-    undirected.get(source)!.add(target);
-    undirected.get(target)!.add(source);
+  nodes.forEach((node) => {
+    graph.setNode(node.id, { width: NODE_WIDTH_ESTIMATE, height: NODE_HEIGHT_ESTIMATE });
+  });
+  edges.forEach(({ source, target }) => {
+    if (nodeIds.has(source) && nodeIds.has(target)) {
+      graph.setEdge(source, target);
+    }
   });
 
-  // Partition into connected components, preserving node insertion order.
-  const componentByNode = new Map<string, number>();
-  const components: LayoutNode[][] = [];
+  Dagre.layout(graph);
+
+  // Dagre reports node centers; convert to top-left and normalize so the whole
+  // graph starts at the origin (keeps callers and tests independent of dagre's
+  // internal offsets).
+  let minX = Infinity;
+  let minY = Infinity;
   nodes.forEach((node) => {
-    if (componentByNode.has(node.id)) {
+    const laidOut = graph.node(node.id);
+    if (!laidOut) {
       return;
     }
-    const index = components.length;
-    const group: LayoutNode[] = [];
-    const stack = [node.id];
-    componentByNode.set(node.id, index);
-    while (stack.length) {
-      const id = stack.pop()!;
-      group.push({ id });
-      undirected.get(id)!.forEach((neighbour) => {
-        if (!componentByNode.has(neighbour)) {
-          componentByNode.set(neighbour, index);
-          stack.push(neighbour);
-        }
-      });
-    }
-    components.push(group);
+    minX = Math.min(minX, laidOut.x - NODE_WIDTH_ESTIMATE / 2);
+    minY = Math.min(minY, laidOut.y - NODE_HEIGHT_ESTIMATE / 2);
   });
+  if (!Number.isFinite(minX)) {
+    minX = 0;
+    minY = 0;
+  }
 
-  // Keep the node order stable within each component
-  const orderIndex = new Map(nodes.map((node, index) => [node.id, index]));
-  components.forEach((group) =>
-    group.sort((a, b) => orderIndex.get(a.id)! - orderIndex.get(b.id)!)
-  );
-
-  let yCursor = 0;
-
-  components.forEach((group) => {
-    const groupIds = new Set(group.map((node) => node.id));
-
-    // Longest-path layering: a node's column is the longest chain of incoming
-    // edges leading to it from a root within this component.
-    const layer = new Map<string, number>();
-    const remainingIn = new Map<string, number>(
-      group.map((node) => [node.id, incoming.get(node.id)!.filter((s) => groupIds.has(s)).length])
-    );
-    const queue = group.filter((node) => remainingIn.get(node.id) === 0).map((node) => node.id);
-    queue.forEach((id) => layer.set(id, 0));
-
-    while (queue.length) {
-      const id = queue.shift()!;
-      const currentLayer = layer.get(id) ?? 0;
-      outgoing.get(id)!.forEach((target) => {
-        if (!groupIds.has(target)) {
-          return;
-        }
-        layer.set(target, Math.max(layer.get(target) ?? 0, currentLayer + 1));
-        remainingIn.set(target, (remainingIn.get(target) ?? 0) - 1);
-        if ((remainingIn.get(target) ?? 0) === 0) {
-          queue.push(target);
-        }
-      });
+  nodes.forEach((node) => {
+    const laidOut = graph.node(node.id);
+    if (!laidOut) {
+      positions.set(node.id, { x: 0, y: 0 });
+      return;
     }
-
-    // Any node not reached (e.g. a cycle) defaults to column 0.
-    group.forEach((node) => {
-      if (!layer.has(node.id)) {
-        layer.set(node.id, 0);
-      }
+    positions.set(node.id, {
+      x: Math.round(laidOut.x - NODE_WIDTH_ESTIMATE / 2 - minX),
+      y: Math.round(laidOut.y - NODE_HEIGHT_ESTIMATE / 2 - minY),
     });
-
-    const columns = new Map<number, string[]>();
-    group.forEach((node) => {
-      const columnIndex = layer.get(node.id)!;
-      if (!columns.has(columnIndex)) {
-        columns.set(columnIndex, []);
-      }
-      columns.get(columnIndex)!.push(node.id);
-    });
-
-    const rowsInBand = Math.max(...[...columns.values()].map((column) => column.length));
-    const bandHeight = (rowsInBand - 1) * ROW_GAP;
-
-    columns.forEach((columnIds, columnIndex) => {
-      // Vertically center each column within the band so short columns align to
-      // the middle of taller ones.
-      const columnOffset = (bandHeight - (columnIds.length - 1) * ROW_GAP) / 2;
-      columnIds.forEach((id, rowIndex) => {
-        positions.set(id, {
-          x: columnIndex * COLUMN_GAP,
-          y: yCursor + columnOffset + rowIndex * ROW_GAP,
-        });
-      });
-    });
-
-    yCursor += bandHeight + ROW_GAP + COMPONENT_GAP;
   });
 
   return positions;
