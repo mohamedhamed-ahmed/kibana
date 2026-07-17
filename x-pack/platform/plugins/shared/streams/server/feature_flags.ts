@@ -92,7 +92,7 @@ export function registerFeatureFlags(core: CoreSetup<StreamsPluginStartDependenc
       name: i18n.translate('xpack.streams.canvasSettingsName', {
         defaultMessage: 'Streams Canvas',
       }),
-      value: false,
+      value: true,
       description: i18n.translate('xpack.streams.canvasSettingsDescription', {
         defaultMessage: 'Enable the Streams Canvas experience.',
       }),
@@ -101,6 +101,8 @@ export function registerFeatureFlags(core: CoreSetup<StreamsPluginStartDependenc
       requiresPageReload: true,
       solutionViews: ['classic', 'oblt'],
       technicalPreview: true,
+      readonly: true,
+      readonlyMode: 'ui',
     },
   });
 }
