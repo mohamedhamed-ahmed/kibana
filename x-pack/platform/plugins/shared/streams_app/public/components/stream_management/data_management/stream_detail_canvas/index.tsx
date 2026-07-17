@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   EuiEmptyPrompt,
   EuiFlexGroup,
@@ -19,8 +19,8 @@ import { Streams } from '@kbn/streams-schema';
 import {
   useEdgesState,
   useNodesState,
+  type NodeChange,
   type NodeMouseHandler,
-  type OnNodeDrag,
 } from '@xyflow/react';
 import { useKibana } from '../../../../hooks/use_kibana';
 import { useStreamsAppFetch } from '../../../../hooks/use_streams_app_fetch';
@@ -82,7 +82,7 @@ function ClassicStreamsCanvas() {
 
   // Local (non-persisted) node state so nodes can be dragged around the canvas.
   // Positions reset to the inferred layout whenever the fetched streams change.
-  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
+  const [nodes, setNodes, applyNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
 
   const { record, undo, redo, reset, canUndo, canRedo } = useCanvasHistory({
@@ -99,10 +99,40 @@ function ClassicStreamsCanvas() {
     reset();
   }, [graph, setNodes, setEdges, reset]);
 
-  // Snapshot before a drag begins so it can be undone as a single step.
-  const onNodeDragStart = useCallback<OnNodeDrag<ClassicCanvasNode>>(() => {
-    record();
-  }, [record]);
+  // Tracks whether a pointer drag is in progress so we snapshot each gesture
+  // exactly once.
+  const isPointerDraggingRef = useRef(false);
+
+  const onNodesChange = useCallback(
+    (changes: Array<NodeChange<ClassicCanvasNode>>) => {
+      let shouldRecord = false;
+      for (const change of changes) {
+        if (change.type !== 'position') {
+          continue;
+        }
+        if (change.dragging) {
+          // First move of a pointer drag: snapshot the pre-drag state once.
+          if (!isPointerDraggingRef.current) {
+            isPointerDraggingRef.current = true;
+            shouldRecord = true;
+          }
+        } else if (change.dragging === false) {
+          if (isPointerDraggingRef.current) {
+            // Trailing change that ends a pointer drag; already snapshotted.
+            isPointerDraggingRef.current = false;
+          } else {
+            // A keyboard-driven move with no preceding drag.
+            shouldRecord = true;
+          }
+        }
+      }
+      if (shouldRecord) {
+        record();
+      }
+      applyNodesChange(changes);
+    },
+    [applyNodesChange, record]
+  );
 
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null);
 
@@ -230,7 +260,6 @@ function ClassicStreamsCanvas() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onNodeContextMenu={onNodeContextMenu}
-      onNodeDragStart={onNodeDragStart}
       onPaneContextMenu={onPaneContextMenu}
       onSelectionContextMenu={onSelectionContextMenu}
       ariaLabel={i18n.translate('xpack.streams.canvas.regionAriaLabel', {
