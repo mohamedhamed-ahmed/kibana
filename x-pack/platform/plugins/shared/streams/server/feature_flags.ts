@@ -101,8 +101,6 @@ export function registerFeatureFlags(core: CoreSetup<StreamsPluginStartDependenc
       requiresPageReload: true,
       solutionViews: ['classic', 'oblt'],
       technicalPreview: true,
-      readonly: true,
-      readonlyMode: 'ui',
     },
   });
 }
