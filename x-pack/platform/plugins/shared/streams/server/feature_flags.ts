@@ -92,7 +92,7 @@ export function registerFeatureFlags(core: CoreSetup<StreamsPluginStartDependenc
       name: i18n.translate('xpack.streams.canvasSettingsName', {
         defaultMessage: 'Streams Canvas',
       }),
-      value: true,
+      value: false,
       description: i18n.translate('xpack.streams.canvasSettingsDescription', {
         defaultMessage: 'Enable the Streams Canvas experience.',
       }),
