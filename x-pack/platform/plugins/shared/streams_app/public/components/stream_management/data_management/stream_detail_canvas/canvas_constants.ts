@@ -53,3 +53,5 @@ export const NODE_HEIGHT_ESTIMATE = 80;
 /** Minimap overview dimensions (px), matching the prototype. */
 export const MINIMAP_WIDTH = 150;
 export const MINIMAP_HEIGHT = 90;
+
+export const MINIMAP_MASK_COLOR = 'rgba(105, 112, 125, 0.14)';

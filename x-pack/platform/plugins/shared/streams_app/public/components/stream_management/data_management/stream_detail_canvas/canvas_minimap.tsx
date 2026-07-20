@@ -11,7 +11,12 @@ import { EuiButtonIcon, EuiFlexGroup, EuiPanel, useEuiTheme } from '@elastic/eui
 import type { UseEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { MiniMap, useReactFlow } from '@xyflow/react';
-import { FIT_VIEW_DURATION, MINIMAP_HEIGHT, MINIMAP_WIDTH } from './canvas_constants';
+import {
+  FIT_VIEW_DURATION,
+  MINIMAP_HEIGHT,
+  MINIMAP_MASK_COLOR,
+  MINIMAP_WIDTH,
+} from './canvas_constants';
 import { DESTINATION_NODE_TYPE, SOURCE_NODE_TYPE } from './types';
 import { MapFoldedIcon } from './map_folded_icon';
 
@@ -126,22 +131,23 @@ export function CanvasMinimap() {
         nodeColor={getNodeColor(euiTheme)}
         nodeStrokeWidth={2}
         nodeBorderRadius={3}
-        bgColor={euiTheme.colors.backgroundBaseSubdued}
+        maskColor={MINIMAP_MASK_COLOR}
         maskStrokeColor={euiTheme.colors.primary}
         maskStrokeWidth={2}
         onClick={(_event, position) =>
           setCenter(position.x, position.y, { duration: FIT_VIEW_DURATION })
         }
-        // Sit in normal flow inside the panel instead of React Flow's own
-        // absolute bottom-right corner.
-        style={{
-          position: 'relative',
-          inset: 'auto',
-          margin: 0,
-          width: MINIMAP_WIDTH,
-          height: MINIMAP_HEIGHT,
-          borderRadius: euiTheme.border.radius.small,
-        }}
+        css={css`
+          position: relative !important;
+          inset: auto !important;
+          margin: 0 !important;
+          background-color: ${euiTheme.colors.backgroundBaseSubdued} !important;
+          border-radius: ${euiTheme.border.radius.small};
+          .react-flow__minimap-node {
+            transition: fill 120ms ease;
+          }
+        `}
+        style={{ width: MINIMAP_WIDTH, height: MINIMAP_HEIGHT }}
       />
     </EuiPanel>
   );

@@ -38,6 +38,11 @@ import { CanvasMinimap } from './canvas_minimap';
 import { CanvasZoomControls } from './canvas_zoom_controls';
 import { canvasEdgeTypes, canvasNodeTypes } from './registry';
 
+// Middle mouse button only. Left is reserved for selection (`selectionOnDrag`)
+// and right for the context menu, so panning by drag uses the middle button
+// (trackpad two-finger scroll pans via `panOnScroll`).
+const PAN_ON_DRAG_BUTTONS = [1];
+
 export const getCanvasContainerStyles = (euiTheme: UseEuiTheme['euiTheme']) => css`
   position: relative;
   // Fill the remaining height of the page section's flex column instead of a
@@ -169,7 +174,8 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
       }
       const nodeElement = (event.target as HTMLElement).closest('.react-flow__node');
       const focusedId = nodeElement?.getAttribute('data-id');
-      if (!focusedId) {
+      const focusVisible = nodeElement ? nodeElement.matches(':focus-visible') : false;
+      if (!focusedId || !focusVisible) {
         return;
       }
       const changes = nodes
@@ -228,9 +234,9 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           panOnScroll
           zoomOnScroll={false}
           zoomOnPinch
-          // Standard selection: plain drag pans, Shift+drag draws a selection box,
-          // and Shift+click adds/removes individual nodes from the selection.
-          selectionKeyCode="Shift"
+          selectionOnDrag
+          panOnDrag={PAN_ON_DRAG_BUTTONS}
+          selectionKeyCode={null}
           multiSelectionKeyCode="Shift"
           // Keep the diagram tidy: nodes snap to the same grid the background dots hint at.
           snapToGrid
