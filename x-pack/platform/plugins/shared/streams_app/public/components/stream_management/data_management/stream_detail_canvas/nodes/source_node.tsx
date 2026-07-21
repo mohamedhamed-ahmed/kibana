@@ -19,6 +19,9 @@ export function SourceNode({ data, selected, dragging }: NodeProps<SourceNodeTyp
   return (
     <>
       <EuiPanel
+        // `nokey` stops React Flow from arming a marquee when a Shift+drag starts
+        // on the card, so Shift+click multi-select stays stable.
+        className="nokey"
         hasShadow={false}
         hasBorder
         paddingSize="m"

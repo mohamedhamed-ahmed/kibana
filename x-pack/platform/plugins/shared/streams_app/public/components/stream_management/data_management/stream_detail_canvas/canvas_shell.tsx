@@ -38,10 +38,11 @@ import { CanvasMinimap } from './canvas_minimap';
 import { CanvasZoomControls } from './canvas_zoom_controls';
 import { canvasEdgeTypes, canvasNodeTypes } from './registry';
 
-// Middle mouse button only. Left is reserved for selection (`selectionOnDrag`)
-// and right for the context menu, so panning by drag uses the middle button
-// (trackpad two-finger scroll pans via `panOnScroll`).
-const PAN_ON_DRAG_BUTTONS = [1];
+// Lines are purely visual connectors that animate on hover — they can't be
+// selected or clicked. Module-level so the object/function identity stays stable
+// across renders.
+const NON_SELECTABLE_EDGE_OPTIONS = { selectable: false };
+const noop = () => {};
 
 export const getCanvasContainerStyles = (euiTheme: UseEuiTheme['euiTheme']) => css`
   position: relative;
@@ -214,6 +215,7 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onEdgeClick={noop}
           onNodeClick={onNodeClick}
           onNodeContextMenu={onNodeContextMenu}
           onNodeDragStart={onNodeDragStart}
@@ -224,6 +226,7 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           elementsSelectable={elementsSelectable}
           nodesFocusable={nodesFocusable}
           edgesFocusable={edgesFocusable}
+          defaultEdgeOptions={NON_SELECTABLE_EDGE_OPTIONS}
           fitView
           fitViewOptions={{ padding: FIT_VIEW_PADDING }}
           minZoom={MIN_ZOOM}
@@ -234,9 +237,7 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           panOnScroll
           zoomOnScroll={false}
           zoomOnPinch
-          selectionOnDrag
-          panOnDrag={PAN_ON_DRAG_BUTTONS}
-          selectionKeyCode={null}
+          selectionKeyCode="Shift"
           multiSelectionKeyCode="Shift"
           // Keep the diagram tidy: nodes snap to the same grid the background dots hint at.
           snapToGrid

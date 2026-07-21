@@ -34,6 +34,9 @@ export function DestinationNode({ data, selected, dragging }: NodeProps<Destinat
     <>
       <Handle type="target" position={Position.Left} isConnectable={false} />
       <EuiPanel
+        // `nokey` stops React Flow from arming a marquee when a Shift+drag starts
+        // on the card, so Shift+click multi-select stays stable.
+        className="nokey"
         hasShadow={false}
         hasBorder
         paddingSize="m"
