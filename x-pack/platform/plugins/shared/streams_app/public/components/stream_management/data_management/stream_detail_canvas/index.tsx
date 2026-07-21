@@ -105,27 +105,31 @@ function ClassicStreamsCanvas() {
 
   const onNodesChange = useCallback(
     (changes: Array<NodeChange<ClassicCanvasNode>>) => {
+      const positionChanges = changes.filter((change) => change.type === 'position');
+      const isDragStart = positionChanges.some(
+        (change) => 'dragging' in change && change.dragging
+      );
+      const isDragEnd = positionChanges.some(
+        (change) => 'dragging' in change && change.dragging === false
+      );
+
       let shouldRecord = false;
-      for (const change of changes) {
-        if (change.type !== 'position') {
-          continue;
+      if (isDragStart) {
+        // First move of a pointer drag: snapshot the pre-drag state once.
+        if (!isPointerDraggingRef.current) {
+          isPointerDraggingRef.current = true;
+          shouldRecord = true;
         }
-        if (change.dragging) {
-          // First move of a pointer drag: snapshot the pre-drag state once.
-          if (!isPointerDraggingRef.current) {
-            isPointerDraggingRef.current = true;
-            shouldRecord = true;
-          }
-        } else if (change.dragging === false) {
-          if (isPointerDraggingRef.current) {
-            // Trailing change that ends a pointer drag; already snapshotted.
-            isPointerDraggingRef.current = false;
-          } else {
-            // A keyboard-driven move with no preceding drag.
-            shouldRecord = true;
-          }
+      } else if (isDragEnd) {
+        if (isPointerDraggingRef.current) {
+          // Ends a pointer drag; already snapshotted at drag start.
+          isPointerDraggingRef.current = false;
+        } else {
+          // A keyboard-driven move with no preceding drag.
+          shouldRecord = true;
         }
       }
+
       if (shouldRecord) {
         record();
       }
