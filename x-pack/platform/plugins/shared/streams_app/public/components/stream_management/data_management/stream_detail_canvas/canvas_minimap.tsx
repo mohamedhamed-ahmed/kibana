@@ -10,7 +10,7 @@ import { css } from '@emotion/react';
 import { EuiButtonIcon, EuiFlexGroup, EuiPanel, useEuiTheme } from '@elastic/eui';
 import type { UseEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { MiniMap, useReactFlow } from '@xyflow/react';
+import { MiniMap, useReactFlow, useStore } from '@xyflow/react';
 import {
   FIT_VIEW_DURATION,
   MINIMAP_HEIGHT,
@@ -37,17 +37,11 @@ const getNodeColor =
     }
   };
 
-/**
- * A small overview of the entire graph pinned to the bottom-right, with a
- * movable/zoomable viewport indicator and type-colored blips. It collapses to a
- * single folded-map button to reclaim space and reopens just as easily. Must
- * render inside a `ReactFlowProvider`. Mirroring a highlighted flow's focus
- * (dimming the rest) is intentionally deferred until the flow-highlight feature
- * lands.
- */
 export function CanvasMinimap() {
   const { euiTheme } = useEuiTheme();
   const { setCenter } = useReactFlow();
+  // Live zoom level, so clicking the minimap recenters without changing zoom
+  const zoom = useStore((state) => state.transform[2]);
   const [collapsed, setCollapsed] = useState(false);
 
   const expand = useCallback(() => setCollapsed(false), []);
@@ -135,7 +129,7 @@ export function CanvasMinimap() {
         maskStrokeColor={euiTheme.colors.primary}
         maskStrokeWidth={2}
         onClick={(_event, position) =>
-          setCenter(position.x, position.y, { duration: FIT_VIEW_DURATION })
+          setCenter(position.x, position.y, { zoom, duration: FIT_VIEW_DURATION })
         }
         css={css`
           position: relative !important;
