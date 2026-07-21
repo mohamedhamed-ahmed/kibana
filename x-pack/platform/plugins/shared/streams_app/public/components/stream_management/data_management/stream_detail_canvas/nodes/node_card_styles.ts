@@ -29,7 +29,6 @@ export const getNodeCardStyles = (
   cursor: ${dragging ? 'grabbing' : 'grab'};
   border-color: ${selected ? euiTheme.colors.primary : euiTheme.colors.borderBaseSubdued};
   transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out;
-  will-change: transform;
   // Resting depth: every card carries a subtle shadow so it lifts off the canvas
   // surface, matching the prototype. euiTheme.colors.shadow is EUI's ink base,
   // so this adapts to light/dark themes.
