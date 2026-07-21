@@ -13,6 +13,7 @@ import {
   Background,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   type CoordinateExtent,
   type Edge,
   type EdgeTypes,
@@ -201,8 +202,6 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
         paddingSize="none"
         css={getCanvasContainerStyles(euiTheme)}
         data-test-subj="streamsCanvasTab"
-        // Interactive graph region: label it and let arrow keys pass through to
-        // the widget (node repositioning) rather than being captured as browse keys.
         role="application"
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedById}
@@ -232,14 +231,12 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           translateExtent={translateExtent}
-          // Figma-style trackpad navigation: two-finger scroll pans, pinch zooms;
-          // plain scroll never zooms, so zoom stays deliberate.
           panOnScroll
           zoomOnScroll={false}
           zoomOnPinch
           selectionKeyCode="Shift"
           multiSelectionKeyCode="Shift"
-          // Keep the diagram tidy: nodes snap to the same grid the background dots hint at.
+          selectionMode={SelectionMode.Partial}
           snapToGrid
           snapGrid={[GRID_SIZE, GRID_SIZE]}
           proOptions={{ hideAttribution: true }}
