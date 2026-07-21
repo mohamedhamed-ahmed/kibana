@@ -106,9 +106,7 @@ function ClassicStreamsCanvas() {
   const onNodesChange = useCallback(
     (changes: Array<NodeChange<ClassicCanvasNode>>) => {
       const positionChanges = changes.filter((change) => change.type === 'position');
-      const isDragStart = positionChanges.some(
-        (change) => 'dragging' in change && change.dragging
-      );
+      const isDragStart = positionChanges.some((change) => 'dragging' in change && change.dragging);
       const isDragEnd = positionChanges.some(
         (change) => 'dragging' in change && change.dragging === false
       );
