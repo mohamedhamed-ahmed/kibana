@@ -5,33 +5,10 @@
  * 2.0.
  */
 
-import type { Streams } from '@kbn/streams-schema';
-import { createMockClassicStreamDefinition } from '../shared/mocks/stream_definitions';
-import {
-  BULK_SOURCE_SUBTITLE,
-  buildClassicStreamsGraph,
-  hasProcessing,
-  inferSource,
-} from './build_graph';
+import { createClassicStreamDefinition } from '../shared/mocks/stream_definitions';
+import { BULK_SOURCE_SUBTITLE } from './build_source';
+import { buildClassicStreamsGraph } from './build_graph';
 import { DESTINATION_NODE_TYPE, SOURCE_NODE_TYPE } from './types';
-
-const createClassicDefinition = (
-  name: string,
-  { withProcessing = false }: { withProcessing?: boolean } = {}
-): Streams.ClassicStream.Definition => {
-  const { stream } = createMockClassicStreamDefinition();
-  return {
-    ...stream,
-    name,
-    ingest: {
-      ...stream.ingest,
-      processing: {
-        steps: withProcessing ? [{ action: 'set', to: 'test_field', value: 'test_value' }] : [],
-        updated_at: stream.ingest.processing.updated_at,
-      },
-    },
-  };
-};
 
 describe('buildClassicStreamsGraph', () => {
   it('returns no nodes or edges for an empty list', () => {
@@ -40,7 +17,7 @@ describe('buildClassicStreamsGraph', () => {
 
   it('builds a source -> destination pair with an edge for a single stream', () => {
     const { nodes, edges } = buildClassicStreamsGraph([
-      createClassicDefinition('logs-nginx-default'),
+      createClassicStreamDefinition('logs-nginx-default'),
     ]);
 
     expect(nodes).toHaveLength(2);
@@ -68,7 +45,7 @@ describe('buildClassicStreamsGraph', () => {
 
   it('flags the destination as having processing when the stream has Streamlang steps', () => {
     const { nodes } = buildClassicStreamsGraph([
-      createClassicDefinition('logs-with-processing', { withProcessing: true }),
+      createClassicStreamDefinition('logs-with-processing', { withProcessing: true }),
     ]);
 
     const destination = nodes.find((node) => node.type === DESTINATION_NODE_TYPE);
@@ -77,8 +54,8 @@ describe('buildClassicStreamsGraph', () => {
 
   it('renders one pair per stream and stacks them on separate rows', () => {
     const { nodes, edges } = buildClassicStreamsGraph([
-      createClassicDefinition('logs-a'),
-      createClassicDefinition('logs-b'),
+      createClassicStreamDefinition('logs-a'),
+      createClassicStreamDefinition('logs-b'),
     ]);
 
     expect(nodes).toHaveLength(4);
@@ -90,8 +67,8 @@ describe('buildClassicStreamsGraph', () => {
 
   it('gives every node a screen-reader aria-label', () => {
     const { nodes } = buildClassicStreamsGraph([
-      createClassicDefinition('logs-nginx-default'),
-      createClassicDefinition('logs-with-processing', { withProcessing: true }),
+      createClassicStreamDefinition('logs-nginx-default'),
+      createClassicStreamDefinition('logs-with-processing', { withProcessing: true }),
     ]);
 
     const byId = new Map(nodes.map((node) => [node.id, node]));
@@ -105,25 +82,5 @@ describe('buildClassicStreamsGraph', () => {
     expect(byId.get('destination-logs-with-processing')?.ariaLabel).toBe(
       'Destination: logs-with-processing, with processing'
     );
-  });
-});
-
-describe('inferSource', () => {
-  it('labels the inferred source from the stream name with a _bulk subtitle', () => {
-    expect(inferSource(createClassicDefinition('logs-nginx-default'))).toEqual({
-      title: 'logs-nginx-default',
-      subtitle: BULK_SOURCE_SUBTITLE,
-      iconType: 'push',
-    });
-  });
-});
-
-describe('hasProcessing', () => {
-  it('is false when there are no processing steps', () => {
-    expect(hasProcessing(createClassicDefinition('logs-a'))).toBe(false);
-  });
-
-  it('is true when there is at least one processing step', () => {
-    expect(hasProcessing(createClassicDefinition('logs-a', { withProcessing: true }))).toBe(true);
   });
 });
