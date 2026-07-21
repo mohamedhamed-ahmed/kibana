@@ -34,6 +34,7 @@ import {
   NODE_HEIGHT_ESTIMATE,
   NODE_WIDTH_ESTIMATE,
   PAN_MARGIN,
+  SNAP_SIZE,
 } from './canvas_constants';
 import { CanvasMinimap } from './canvas_minimap';
 import { CanvasZoomControls } from './canvas_zoom_controls';
@@ -238,7 +239,7 @@ export function CanvasShell<NodeType extends Node = Node, EdgeType extends Edge 
           multiSelectionKeyCode="Shift"
           selectionMode={SelectionMode.Partial}
           snapToGrid
-          snapGrid={[GRID_SIZE, GRID_SIZE]}
+          snapGrid={[SNAP_SIZE, SNAP_SIZE]}
           proOptions={{ hideAttribution: true }}
         >
           <Background gap={GRID_SIZE} color={euiTheme.colors.borderBasePlain} />

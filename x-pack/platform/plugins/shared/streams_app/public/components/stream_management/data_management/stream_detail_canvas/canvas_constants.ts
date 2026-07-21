@@ -5,14 +5,13 @@
  * 2.0.
  */
 
-// Canvas-wide layout and viewport constants shared by the graph builder, the
-// auto-layout, and the canvas shell.
-
 /**
  * Background dot grid spacing (px). Column/row gaps are multiples of this so
  * nodes and connectors align to the same visual grid.
  */
 export const GRID_SIZE = 16;
+
+export const SNAP_SIZE = 8;
 
 /** Center-to-center horizontal distance between successive layout columns (px). */
 export const COLUMN_GAP = 360;
